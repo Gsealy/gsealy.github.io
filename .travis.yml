@@ -6,10 +6,12 @@ install:
 
 script:
   - hexo g
+  - git submodule init
+  - git submodule update
 
 after_script:
   - cd ./public
-  - git init 
+  - git init
   - git config user.name "Gsealy"
   - git config user.email "jiaojingwei1001@hotmail.com"
   - git add .
