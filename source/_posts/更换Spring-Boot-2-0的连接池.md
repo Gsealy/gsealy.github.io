@@ -43,7 +43,7 @@ Spring Boot 2.0将`HikariCP`作为默认的连接池，给出了如下解释：
 
 **Tips：**没有在`spring-boot-starter-jdbc`的`pom`文件里发现`tomcat-jdbc`，可能默认的就已经是`HikariCP`了吧，所以也不用排除`tomcat-jdbc`
 
-#### yaml配置
+#### yaml配置 
 
 ```yaml
 spring:
@@ -117,11 +117,17 @@ Consider the following:
 	If you have database settings to be loaded from a particular profile you may need to activate it (no profiles are currently active).
 ```
 
-“无法确定合适的驱动类”，配置`DataSource`下的`'url'`参数失败，像阿里自己封装的`druid-starter`，所有都配置`spring.datasource.druid`在即可，所以上面的解决办法就是把打了注释这四项提出到上一级就可以了，顺道把`jdbc-url`改为`url`就可以用了。
+“无法确定合适的驱动类”，配置`DataSource`下的`'url'`参数失败，像阿里自己封装的`druid-starter`，所有都配置`spring.datasource.druid`在即可，所以出现上面问题的解决办法就是使用[yaml配置](#yaml配置) 这里的配置就可以了。
+
+BTW，好像没在	
 
 还有一个小问题就是`IDEA`针对`spring.datasource.driver-class-name`这一项配置居然不识别，虽然报错，但是不影响使用
 
 > IDEA当前版本：IntelliJ IDEA 2018.3.1 (Ultimate Edition)
 
 ![](https://ws1.sinaimg.cn/large/7074e5d2ly1fy9pd9022jj20nu02eglo.jpg)
+
+结束！🔚
+
+------
 
