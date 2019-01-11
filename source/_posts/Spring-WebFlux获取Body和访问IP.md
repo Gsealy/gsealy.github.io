@@ -82,13 +82,19 @@ request.bodyToMono(String.class)
 在[Spring Boot#15320](https://github.com/spring-projects/spring-boot/issues/15320#issuecomment-442574935)找到了答案
 
 ```
-This code is calling subscribe on the request body and decouples it from the response rendering. Because you're decoupling the request handling from the bit that reads the request body, you're running into a race condition: by the time the response is handled, Spring WebFlux is cleaning the HTTP resources (request and response resources), which means that your other subscription might not have time to read the body.
+This code is calling subscribe on the request body and decouples it from the response rendering. 
+Because you're decoupling the request handling from the bit that reads the request body, 
+you're running into a race condition: 
+by the time the response is handled, Spring WebFlux is cleaning the HTTP resources (request and response resources), 
+which means that your other subscription might not have time to read the body.
 ```
 
 主要意思就是：
 
 ```
-调用subscribe()方法获取请求体会割裂响应。此时正处于竞争态，在处理响应时，Spring WebFlux正在清理HTTP资源（请求和响应资源），意味着你其他的订阅无法得到请求体。
+调用subscribe()方法获取请求体会割裂响应，此时正处于竞争态。
+在处理响应时，Spring WebFlux正在清理HTTP资源（请求和响应资源）。
+意味着你其他的订阅无法得到请求体。
 ```
 
 所以想对Body做操作时，需要链式调用，最好不要使用订阅等方法，而且这里还处于竞争态，更不能使用。所以单独获取Body或者某一请求值的话，直接使用`flatMap()`方法
