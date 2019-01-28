@@ -23,7 +23,7 @@ tags:
 public static byte[] encodePoint(PublicKey publicKey) throws InvalidKeySpecException {
 	if (publicKey instanceof ECPublicKey) {
 		BCECPublicKey bcPubKey = (BCECPublicKey) publicKey;
-		return bcPubKey.getQ().normalize().getEncoded(true);
+		return bcPubKey.getQ().getEncoded(true);
 	}
 	throw new InvalidKeySpecException("cannot identify EC public key.");
 }
@@ -45,7 +45,7 @@ public static PublicKey decodePoint(String compressedKey, String curveName)
 	X9ECParameters spec = ECNamedCurveTable.getByName(curveName);
 	// 根据X恢复点Y
 	ECPoint W = spec.getCurve().decodePoint(Hex.decode(compressedKey));
-	return toAsn1PublicKey(W.normalize(), curveName);
+	return toAsn1PublicKey(W, curveName);
 }
 
 ```
