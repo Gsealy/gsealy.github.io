@@ -15,6 +15,10 @@ tags:
 > 当前版本：
 >
 > Spring Boot：2.1.3.RELEASE
+>
+> Grafana：6.0.2
+>
+> Prometheus：2.8.0
 
 ### 下载
 
