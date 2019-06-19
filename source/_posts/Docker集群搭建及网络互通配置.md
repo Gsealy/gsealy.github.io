@@ -150,88 +150,14 @@ PING testc1 (10.0.0.2): 56 data bytes
 round-trip min/avg/max = 0.363/0.382/0.402 ms
 ```
 
-## consul集群
 
-使用前一个配置好的网卡地址`prod-overlay`
-
-查看一下overlay网卡分配的网段，第一个是网段，第二个是网关
-
-```bash
-[root@bogon consul]# docker network inspect --format {{.IPAM.Config}} prod-overlay
-[{10.0.0.0/24  10.0.0.1 map[]}]
-```
-
-直接上compose文件
-
-```yaml
-version: '3'
-networks:
-  # 配置此网桥名
-  prod-overlay:
-    # true表示网桥存在，false代表网桥不存在，启动容器并创建
-    external: true
-services:
-  consul1:
-    image: consul:1.4.4
-    hostname: "consul1"
-    container_name: "dc1consul1"
-    ports:
-      - 8500:8500
-    networks:
-      # 指定overlay的网桥名
-      prod-overlay:
-        # 需要指定当前镜像的IP
-        ipv4_address: 10.0.0.10
-    # 然后在consul的命令中指定-bind ip
-    command: "agent -server -bootstrap-expect 3 -ui -client 0.0.0.0 -bind 10.0.0.10 -node servernode1 -datacenter dc1"
-  consul2:
-    image: consul:1.4.4
-    hostname: "consul2"
-    container_name: "dc1consul2"
-    networks:
-      prod-overlay:
-        ipv4_address: 10.0.0.11
-    command: "agent -server -join consul1 -disable-host-node-id -client 0.0.0.0 -bind 10.0.0.11 -node servernode2 -datacenter dc1"
-    depends_on: 
-      - consul1
-  consul3:
-    image: consul:1.4.4
-    hostname: "consul3"
-    container_name: "dc1consul3"
-    networks:
-      prod-overlay:
-        ipv4_address: 10.0.0.12
-    command: "agent -server -join consul1 -disable-host-node-id -client 0.0.0.0 -bind 10.0.0.12 -node servernode3 -datacenter dc1"
-    depends_on:
-      - consul1
-  consul4:
-    image: consul:1.4.4
-    hostname: "consul4"
-    container_name: "dc1consul4"
-    ports:
-      - 9500:8500
-    networks:
-      prod-overlay:
-        ipv4_address: 10.0.0.13
-    command: "agent -join consul1 -disable-host-node-id -client 0.0.0.0 -bind 10.0.0.13 -node clientnode1 -datacenter dc1"
-  consul5:
-    image: consul:1.4.4
-    hostname: "consul5"
-    container_name: "dc1consul5"
-    ports:
-      - 10500:8500
-    networks:
-      prod-overlay:
-        ipv4_address: 10.0.0.14
-    command: "agent -join consul1 -disable-host-node-id -client 0.0.0.0 -bind 10.0.0.14 -node clientnode2 -datacenter dc1"
-```
-
-在这里是启动了3个Server，2个Client,所有状态正常，可以映射Client端口做服务注册
-
-![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/docker/nodes.png)
 
 ## 参考资料
 
 1. [一种生产环境Docker Overlay Network的配置方案](https://chanjarster.github.io/post/docker-overlay-network/)
 2. [docker swarm 和compose部署服务，解决跨主机网路问题和ip不固定问题（一）](http://blog.sina.com.cn/s/blog_ad5322e70102x1ex.html)
+
+结束！🔚
+
+------
 
