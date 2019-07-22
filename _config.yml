@@ -116,3 +116,10 @@ deploy:
   # other deployer
   -
     type: leancloud_counter_security_sync
+
+# word count
+symbols_count_time:
+  symbols: true
+  time: true
+  total_symbols: true
+  total_time: true
