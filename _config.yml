@@ -109,8 +109,10 @@ abbrlink:
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
-  type: git
-  repo: git@github.com:Gsealy/gsealy.github.io.git
-  branch: master
-    # other deployer / update
-    -type: leancloud_counter_security_sync
+  -
+    type: git
+    repo: git@github.com:Gsealy/gsealy.github.io.git
+    branch: master
+  # other deployer
+  -
+    type: leancloud_counter_security_sync
