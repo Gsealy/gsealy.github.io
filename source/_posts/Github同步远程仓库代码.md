@@ -1,9 +1,10 @@
 ---
 title: Github同步远程仓库代码
-date: 2019-01-22 10:56:18
 tags:
-- Github
-- Git
+  - Github
+  - Git
+abbrlink: a07a809d
+date: 2019-01-22 10:56:18
 ---
 
 > 最近提了自己第一个PR，总体也是磕磕绊绊。先记录下fork代码的更新吧。

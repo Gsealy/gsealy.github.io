@@ -1,10 +1,11 @@
 ---
 title: SC-Gateway缓存Body并从中提取FormData和MultiPart
-date: 2018-11-27 14:11:45
 tags:
-- Gateway
-- Spring Cloud
-- WebFlux
+  - Gateway
+  - Spring Cloud
+  - WebFlux
+abbrlink: 635b6c82
+date: 2018-11-27 14:11:45
 ---
 
 ### 缓存Body

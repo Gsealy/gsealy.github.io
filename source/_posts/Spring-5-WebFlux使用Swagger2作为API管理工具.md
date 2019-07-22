@@ -1,9 +1,10 @@
 ---
 title: Spring 5 WebFlux使用Swagger2作为API管理工具
-date: 2019-03-19 09:56:17
 tags:
-- WebFlux
-- Swagger
+  - WebFlux
+  - Swagger
+abbrlink: d1dfb98a
+date: 2019-03-19 09:56:17
 ---
 
 ### 前言

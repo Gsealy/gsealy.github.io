@@ -1,10 +1,11 @@
 ---
 title: Spring WebFlux获取Body和访问IP
-date: 2019-01-11 10:55:52
 tags:
-- Spring Boot
-- WebFlux
-- Reactor
+  - Spring Boot
+  - WebFlux
+  - Reactor
+abbrlink: 34712fd6
+date: 2019-01-11 10:55:52
 ---
 
 > 当通过`subscribe`获取body体的时候，总是报null。

@@ -1,9 +1,10 @@
 ---
 title: 更换Spring Boot 2.0的连接池
-date: 2018-12-17 11:15:46
 tags:
-- Pool
-- Spring Boot
+  - Pool
+  - Spring Boot
+abbrlink: 319c1e00
+date: 2018-12-17 11:15:46
 ---
 
 > **前言**

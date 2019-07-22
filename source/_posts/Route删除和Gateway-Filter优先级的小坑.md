@@ -1,10 +1,11 @@
 ---
 title: Route删除和Gateway-Filter优先级的小坑
-date: 2018-11-29 15:20:07
 tags:
-- Spring Cloud
-- Gateway
-- Filter
+  - Spring Cloud
+  - Gateway
+  - Filter
+abbrlink: 6548debe
+date: 2018-11-29 15:20:07
 ---
 
 最近在做业务网关的时候，发现用`RouteLocatorBuilder`构建的`Route`无法操作删除和更新操作，又换回了`RouteDefinition`的构建方式，梳理下这里面的坑。

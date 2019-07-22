@@ -1,9 +1,10 @@
 ---
 title: 'Spring MultiValueMap抛出java.lang.UnsupportedOperationException: null异常'
-date: 2018-11-19 17:54:23
 tags:
-- Spring Cloud
-- Gateway
+  - Spring Cloud
+  - Gateway
+abbrlink: 76378c1b
+date: 2018-11-19 17:54:23
 ---
 
 今儿在sc-Gateway处理formData的时候，明明有值，但是会抛出`java.lang.UnsupportedOperationException: null`的异常。

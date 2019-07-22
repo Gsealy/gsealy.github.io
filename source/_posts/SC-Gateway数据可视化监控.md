@@ -1,11 +1,11 @@
 ---
 title: SC-Gateway数据可视化监控
-date: 2019-03-27 14:33:31
 tags:
-- Spring Boot 2
-- Grafana
-- Prometheus
-
+  - Spring Boot 2
+  - Grafana
+  - Prometheus
+abbrlink: dcd7d36b
+date: 2019-03-27 14:33:31
 ---
 
 ### 前言

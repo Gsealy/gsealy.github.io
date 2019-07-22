@@ -1,10 +1,11 @@
 ---
 title: Docker Swarm下Consul多DC部署
-date: 2019-06-19 14:36:25
 tags:
-- consul
-- swarm
-- docker
+  - consul
+  - swarm
+  - docker
+abbrlink: d3a977f2
+date: 2019-06-19 14:36:25
 ---
 
 在前一篇中完成了swarm的搭建和测试，继续使用上一个的overlay网桥。[Docker集群搭建及网络互通配置](https://gsealy.github.io/posts/187e5652/)

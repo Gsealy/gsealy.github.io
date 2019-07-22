@@ -1,8 +1,9 @@
 ---
 title: Git常用命令备份
-date: 2018-12-10 11:40:57
 tags:
-- Git
+  - Git
+abbrlink: edb3f98d
+date: 2018-12-10 11:40:57
 ---
 
 **备份一下日常用命令**

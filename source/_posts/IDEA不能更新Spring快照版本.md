@@ -1,9 +1,10 @@
 ---
 title: IDEA不能更新Spring快照版本
-date: 2019-02-19 13:53:10
 tags:
-- Maven
-- IDEA
+  - Maven
+  - IDEA
+abbrlink: 4980ebc2
+date: 2019-02-19 13:53:10
 ---
 
 > IDEA 版本：IntelliJ IDEA 2018.3.4 (Ultimate Edition)

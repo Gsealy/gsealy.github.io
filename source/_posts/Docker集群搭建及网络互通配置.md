@@ -1,11 +1,12 @@
 ---
 title: Docker集群搭建及网络互通配置
-date: 2019-06-18 10:33:57
 tags:
-- docker
-- swarm
-- cluster
-- consul
+  - docker
+  - swarm
+  - cluster
+  - consul
+abbrlink: '187e5652'
+date: 2019-06-18 10:33:57
 ---
 
 ## 目的
