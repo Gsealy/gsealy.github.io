@@ -112,5 +112,5 @@ deploy:
   type: git
   repo: git@github.com:Gsealy/gsealy.github.io.git
   branch: master
-    # other deployer
+    # other deployer / update
     -type: leancloud_counter_security_sync
