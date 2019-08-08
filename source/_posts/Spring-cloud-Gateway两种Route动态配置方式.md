@@ -15,7 +15,7 @@ date: 2018-10-18 10:05:15
 
 ### sc-gateway 支持动态配置么？
 
-查看上面的blog，可以知道是支持的，也支持RESTful方式，内部写好了相应的类，就是现今文档不是很详细。源码的javadoc也写的很模糊。`GatewayControllerEndpoint`类中，只是很简单的写了个注释，还标着`unchecked`。
+查看上面的blog，可以知道是支持的，也支持RESTful方式，内部写好了相应的类，就是现今文档不是很详细。源码的javadoc也写的很模糊。`GatewayControllerEndpoint`类中，只是很简单的写了个注释。
 
 ![](https://ws1.sinaimg.cn/large/7074e5d2ly1fwc65ed2l3j20rl09dmxr.jpg)
 
