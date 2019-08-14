@@ -1,10 +1,11 @@
 ---
 title: Docker集群部署Consul 1.5.x
-date: 2019-08-06 09:52:33
 tags:
- - Docker
- - Consul
- - ACL
+  - Docker
+  - Consul
+  - ACL
+abbrlink: 2d577c40
+date: 2019-08-06 09:52:33
 ---
 
 > 前提：

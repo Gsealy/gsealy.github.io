@@ -1,9 +1,10 @@
 ---
 title: 和Spring Cloud相关的Consul ACL配置
-date: 2019-08-08 10:51:32
 tags:
- - ACL
- - Spring Cloud
+  - ACL
+  - Spring Cloud
+abbrlink: ef685081
+date: 2019-08-08 10:51:32
 ---
 
 ## 前提

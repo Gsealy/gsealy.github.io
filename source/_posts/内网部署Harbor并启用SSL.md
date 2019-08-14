@@ -1,10 +1,11 @@
 ---
 title: 内网部署Harbor并启用SSL
-date: 2019-07-22 14:50:45
 tags:
-- Harbor
-- Docker
-- SSL
+  - Harbor
+  - Docker
+  - SSL
+abbrlink: 1d848727
+date: 2019-07-22 14:50:45
 ---
 
 ## 申请SSL证书
