@@ -51,11 +51,11 @@ public class InMemoryRouteDefinitionRepository implements RouteDefinitionReposit
 
 我先给了个优先级，从官方给的`EndPoint`可以查看到：
 
-![](https://ws1.sinaimg.cn/large/7074e5d2ly1fxozc8c4e5j20tg0ex78k.jpg)
+![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/spring/gateway-filters.jpg)
 
 但是这个设置了是不起作用的！只能`debug`看看了，进入到任意一个`GlobalFilter`，查看`GatewayFilterChain`的`filters`这一项，可以看到他的order是1！所以要改变的话，只要把应该在他后面的改的值比他大就行了。
 
-![](https://ws1.sinaimg.cn/large/7074e5d2ly1fxozg99zabj20hs0dbq3t.jpg)
+![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/spring/gateway-filters-2.jpg)
 
 结束！🔚
 

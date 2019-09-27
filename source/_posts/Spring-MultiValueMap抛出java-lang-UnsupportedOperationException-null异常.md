@@ -7,7 +7,7 @@ abbrlink: 76378c1b
 date: 2018-11-19 17:54:23
 ---
 
-今儿在sc-Gateway处理formData的时候，明明有值，但是会抛出`java.lang.UnsupportedOperationException: null`的异常。
+今儿在SC-Gateway处理formData的时候，明明有值，但是会抛出`java.lang.UnsupportedOperationException: null`的异常。
 
 看一下代码：
 
@@ -46,35 +46,36 @@ public void addFormDataToMap(Mono<MultiValueMap<String, String>> formdata,
 
 跟进去发现，在`CollectionUtils`类中，可以看到存在完整的键值对，执行完当前step会直接抛出异常。
 
-![](https://ws1.sinaimg.cn/large/7074e5d2ly1fxe95vjgvlj20ob034glq.jpg)
+![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/spring/gateway-exception-1.jpg)
 
 subscribe抛出异常：
 
-![](https://ws1.sinaimg.cn/large/7074e5d2ly1fxe98g33xuj20q009faan.jpg)
+![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/spring/gateway-exception-2.jpg)
 
 查看`java.util.Map`方法中的`computeIfAbsent`类，当当前Map不支持此`put`操作时抛出`UnsupportedOperationException`异常，所以存储了一个`null`
 
-![](https://ws1.sinaimg.cn/large/7074e5d2ly1fxe9ddhvvhj20o107gdgl.jpg)
+![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/spring/gateway-exception-2.jpg)
 
 修改代码：
 
 ```java
 public void addFormDataToMap(Mono<MultiValueMap<String, String>> formdata, MultiValueMap<String, String> paramsMap) {
-	AtomicReference<MultiValueMap<String, String>> QueryRef = new AtomicReference<>();
+	AtomicReference<MultiValueMap<String, String>> queryRef = new AtomicReference<>();
     formdata.subscribe(maps -> {
-      QueryRef.set(maps);
+      queryRef.set(maps);
     });
-    if (QueryRef.get().isEmpty() && QueryRef.get() == null) {
+    if (queryRef.get() == null && queryRef.get().isEmpty()) {
       return;
     }
     LinkedMultiValueMap<String, String> newList = new LinkedMultiValueMap<>(paramsMap); // {1-1}
-    newList.addAll(QueryRef.get()); // {1-2}
+    newList.addAll(queryRef.get()); // {1-2}
 }
 ```
 
 删除原先代码`<1>`部分，增加`{1-1}`和`{1-2}`，先创建新的`LinkedList`，再`addAll`
 
-> #### 引用
+## 引用
+
 >
 > [Why do I get an UnsupportedOperationException when trying to remove an element from a List?](https://stackoverflow.com/a/2965762)🔚
 

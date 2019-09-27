@@ -17,7 +17,7 @@ date: 2018-10-18 10:05:15
 
 查看上面的blog，可以知道是支持的，也支持RESTful方式，内部写好了相应的类，就是现今文档不是很详细。源码的javadoc也写的很模糊。`GatewayControllerEndpoint`类中，只是很简单的写了个注释。
 
-![](https://ws1.sinaimg.cn/large/7074e5d2ly1fwc65ed2l3j20rl09dmxr.jpg)
+![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/spring/gateway-original-method.jpg)
 
 因为这种方式依赖于健康检查，先在`pom.xml`里面添加依赖
 
@@ -40,7 +40,7 @@ management:
 
 默认打开了`consul`的`json`配置
 
-![](https://ws1.sinaimg.cn/large/7074e5d2ly1fwc69vctd7j20bf0d2dfs.jpg)
+![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/spring/gateway-actuator.jpg)
 
 ### 重新实现动态配置
 
@@ -243,7 +243,7 @@ public class RouteController {
 http post http://127.0.0.1:12305/testbaidu
 ```
 
-![](https://ws1.sinaimg.cn/large/7074e5d2ly1fwc6xnazsaj20a703e74a.jpg)
+![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/spring/gateway-httpie-1.jpg)
 
 可以拉取一下配置文件看看
 
@@ -251,7 +251,7 @@ http post http://127.0.0.1:12305/testbaidu
 http get http://127.0.0.1:12305/actuator/gateway/routes/
 ```
 
-![](https://ws1.sinaimg.cn/large/7074e5d2ly1fwc6zs66l0j20a108r0t3.jpg)
+![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/spring/gateway-httpie-2.jpg)
 
 这样就初步完成配置
 
@@ -259,7 +259,7 @@ http get http://127.0.0.1:12305/actuator/gateway/routes/
 
 在抓取配置信息的时候，出现了500错误，出现了`The mapper returned a null Publisher`的error信息。明明在`application.yml`或者代码中配置了route信息。只有在添加新的路由信息后，才能刷新出路由表。
 
-![](https://ws1.sinaimg.cn/large/7074e5d2ly1fwc778jvqij20d505ht8t.jpg)
+![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/spring/gateway-httpie-3.jpg)
 
 这样需要在Spring boot启动的时候，自动去刷新一下路由表，为了方便后期在添加启动执行项，创建一个`startup`类，在里面调用一下`buildRoutes`
 

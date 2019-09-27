@@ -126,7 +126,7 @@ BTW，好像没在
 
 > IDEA当前版本：IntelliJ IDEA 2018.3.1 (Ultimate Edition)
 
-![](https://ws1.sinaimg.cn/large/7074e5d2ly1fy9pd9022jj20nu02eglo.jpg)
+![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/spring/jdbc-driver.jpg)
 
 结束！🔚
 

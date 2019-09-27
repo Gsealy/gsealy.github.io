@@ -18,16 +18,14 @@ git clone https://github.com/Gsealy/CATClientDemo.git
 
 ### 一、构建Spring Boot应用
 
-**方法一**：从[https://start.spring.io/](https://start.spring.io/)快速构建完整项目，仅需添加`web`依赖。
-![](https://ws1.sinaimg.cn/large/7074e5d2ly1fw59vkrfrmj20wc0awgmn.jpg)
+**方法一**：从[start.spring.io](https://start.spring.io/)快速构建完整项目，仅需添加`web`依赖。
+![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/spring/start-spring.jpg)
 
 **方法二**：直接在IDE（idea或者STS）中创建Spring Boot应用即可。
 
 先给出项目内文件结构：
 
-<div align=center>
-![](https://ws1.sinaimg.cn/large/7074e5d2ly1fw59yav5y1j207709saa3.jpg)
-</div>
+![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/spring/spring-tree-map.jpg)
 
 
 在`WebApplication`类中创建Controller，如下所示：

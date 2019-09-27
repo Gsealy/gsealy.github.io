@@ -33,7 +33,7 @@ mvn clean install
 
 解压缩`tomcat`，路径自选，进入`bin`目录，按照官网给出的修改`catalina.sh`文件(`ps.`刚发现他们在升级3.0.0版，readme给改了0.0，那下个2.0.0的release版吧)
 
-在`# OS specific support.  $var _must_ be set to either true or false.`后一行添加`CATALINA_OPTS`参数![](https://ws1.sinaimg.cn/large/7074e5d2ly1fw5a09yimkj20l10ajjsb.jpg)
+在`# OS specific support.  $var _must_ be set to either true or false.`后一行添加`CATALINA_OPTS`参数![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/cat/cat-catalina.jpg)
 
 
 
