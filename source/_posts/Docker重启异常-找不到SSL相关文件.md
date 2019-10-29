@@ -1,8 +1,9 @@
 ---
 title: Docker重启异常 - 找不到SSL相关文件
-date: 2019-09-05 14:54:56
 tags:
-- Docker
+  - Docker
+abbrlink: 4cff467a
+date: 2019-09-05 14:54:56
 ---
 
 ## 前言

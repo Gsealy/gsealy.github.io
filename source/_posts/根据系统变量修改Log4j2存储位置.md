@@ -1,9 +1,10 @@
 ---
 title: 根据系统变量修改Log4j2存储位置
-date: 2019-09-27 09:31:41
 tags:
-- Java
-- Log4j2
+  - Java
+  - Log4j2
+abbrlink: 81f201e1
+date: 2019-09-27 09:31:41
 ---
 
 # 前言
