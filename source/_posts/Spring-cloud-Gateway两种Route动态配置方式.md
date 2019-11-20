@@ -1,5 +1,5 @@
 ---
-title: Spring cloud Gateway两种Route动态配置方式
+title: Spring Cloud Gateway两种Route动态配置方式
 tags:
   - Spring Cloud
   - Gateway
