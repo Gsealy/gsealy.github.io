@@ -8,9 +8,10 @@ tags:
 
 ## 问题复现
 
-#### 环境
+### 环境
 
 AD由测试部署在Windows Server 2008上面，服务端证书也是Windows签发的
+客户端：OpenJDK11（此问题在OpenJDK8+都会出现）
 
 ------------------------------------------------------------------------------------------------------------------
 
@@ -193,20 +194,20 @@ import com.sun.jndi.ldap.LdapCtxFactory;
 public class LdapsJNDITest {
 
     public static void main(String[] args) {
-			Hashtable<String, String> env = new Hashtable<>();
-			String ldapURL = "ldaps://10.20.61.26:636";
-			String adminName = "CN=Administrator,CN=Users,DC=aaa,DC=com";
-			String adminPassword = "11111111";
-			env.put(Context.INITIAL_CONTEXT_FACTORY, LdapCtxFactory.class.getName());
-			env.put(Context.SECURITY_PRINCIPAL, adminName);
-			env.put(Context.SECURITY_CREDENTIALS, adminPassword);
-			env.put(JndiPropertyConstants.JNDI_FACTORY_SOCKET, LdapsNoVerifySSLSocketFactory.class.getName());
+        Hashtable<String, String> env = new Hashtable<>();
+        String ldapURL = "ldaps://10.20.61.26:636";
+        String adminName = "CN=Administrator,CN=Users,DC=aaa,DC=com";
+        String adminPassword = "11111111";
+        env.put(Context.INITIAL_CONTEXT_FACTORY, LdapCtxFactory.class.getName());
+        env.put(Context.SECURITY_PRINCIPAL, adminName);
+        env.put(Context.SECURITY_CREDENTIALS, adminPassword);
+        env.put(JndiPropertyConstants.JNDI_FACTORY_SOCKET, LdapsNoVerifySSLSocketFactory.class.getName());
 
-			try {env.put(Context.PROVIDER_URL, ldapURL);
-				LdapContext ctx = new InitialLdapContext(env, null);
-			} catch (NamingException e) {
-				e.printStackTrace();
-			}
+        try {env.put(Context.PROVIDER_URL, ldapURL);
+			LdapContext ctx = new InitialLdapContext(env, null);
+		} catch (NamingException e) {
+			e.printStackTrace();
+		}
     }
 
 }
@@ -320,24 +321,24 @@ import cn.com.LdapsNoVerifySSLSocketFactory.NoVerificationTrustManager;
 public class LdapsJNDIV2Test {
 
     public static void main(String[] args) throws Exception{
-			NoVerificationTrustManager noVerificationTrustManager = new NoVerificationTrustManager();
-			SSLContext sslContext = SSLContext.getInstance("TLS");
-			sslContext.init(null, new TrustManager[]{noVerificationTrustManager}, new SecureRandom());
-			SSLContext.setDefault(sslContext);
-			Hashtable<String, String> env = new Hashtable<>();
-			String ldapURL = "ldaps://10.20.61.26:636";
-			String adminName = "CN=Administrator,CN=Users,DC=aaa,DC=com";
-			String adminPassword = "11111111";
-			env.put(Context.INITIAL_CONTEXT_FACTORY, LdapCtxFactory.class.getName());
-			env.put(Context.SECURITY_PRINCIPAL, adminName);
-			env.put(Context.SECURITY_CREDENTIALS, adminPassword);
+		NoVerificationTrustManager noVerificationTrustManager = new NoVerificationTrustManager();
+		SSLContext sslContext = SSLContext.getInstance("TLS");
+		sslContext.init(null, new TrustManager[]{noVerificationTrustManager}, new SecureRandom());
+		SSLContext.setDefault(sslContext);
+		Hashtable<String, String> env = new Hashtable<>();
+		String ldapURL = "ldaps://10.20.61.26:636";
+		String adminName = "CN=Administrator,CN=Users,DC=aaa,DC=com";
+		String adminPassword = "11111111";
+		env.put(Context.INITIAL_CONTEXT_FACTORY, LdapCtxFactory.class.getName());
+		env.put(Context.SECURITY_PRINCIPAL, adminName);
+		env.put(Context.SECURITY_CREDENTIALS, adminPassword);
 
-			try {env.put(Context.PROVIDER_URL, ldapURL);
-				LdapContext ctx = new InitialLdapContext(env, null);
-				System.out.println(ctx.getEnvironment());
-			} catch (NamingException e) {
-				e.printStackTrace();
-			}
+		try {env.put(Context.PROVIDER_URL, ldapURL);
+			LdapContext ctx = new InitialLdapContext(env, null);
+			System.out.println(ctx.getEnvironment());
+		} catch (NamingException e) {
+			e.printStackTrace();
+		}
     }
 
 }
