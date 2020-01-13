@@ -131,7 +131,7 @@ public class CatFilterConfigure {
 
 可以在CAT服务端看到当前的应用已经连上了
 
-![](https://ws1.sinaimg.cn/large/7074e5d2ly1fw59yaxpkgj20qw0chq3r.jpg)
+![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/spring/cat-with-spring.jpg)
 
 在Transaction和Event中也都能看到相应的log。
 
