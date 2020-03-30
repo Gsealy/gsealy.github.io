@@ -1,9 +1,10 @@
 ---
 title: 'LDAPS: 必要证书扩展缺失导致SSL连接建立失败解决办法'
-date: 2020-01-03 10:19:54
 tags:
-- LDAP
-- workaroud
+  - LDAP
+  - workaroud
+abbrlink: d64ac2e9
+date: 2020-01-03 10:19:54
 ---
 
 ## 问题复现
