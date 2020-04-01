@@ -9,7 +9,7 @@ date: 2020-01-03 10:19:54
 
 >2020年4月1日 更新：
 >
->解决在OpenJDK11下Spring Boot FatJar抛出`ClassNotFoundException`的问题。详见[[Bug Fix] Spring Boot Fat Jar 运行异常](#[Bug Fix] Spring Boot Fat Jar 运行异常)
+>解决在OpenJDK11下Spring Boot FatJar抛出`ClassNotFoundException`的问题。详见[Spring Boot Fat Jar 运行异常](#[Bug Fix] Spring Boot Fat Jar 运行异常)
 
 ## 问题复现
 
