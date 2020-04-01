@@ -7,6 +7,10 @@ abbrlink: d64ac2e9
 date: 2020-01-03 10:19:54
 ---
 
+>2020年4月1日 更新：
+>
+>解决在OpenJDK11下Spring Boot FatJar抛出`ClassNotFoundException`的问题。详见[[Bug Fix] Spring Boot Fat Jar 运行异常](#[Bug Fix] Spring Boot Fat Jar 运行异常)
+
 ## 问题复现
 
 ### 环境
@@ -298,7 +302,7 @@ String clsName = getSecurityProperty("ssl.SocketFactory.provider");
 
 所以我们在LdapsNoVerifySSLSocketFactory里面通过静态代码块初始化配置了需要加载的类
 
-### 另一种实现
+## 另一种实现
 
 所以这里引出另一种实现方式，可以减少代码量。但是耦合度较高，那就是在JNDI初始化前，初始化SSLContext，并设置为默认
 
@@ -347,5 +351,85 @@ public class LdapsJNDIV2Test {
 
 两种方式都可，选择适合自己的就可以啦！🔚
 
-------
+## [Bug Fix] Spring Boot Fat Jar 运行异常
+
+抛出问题如下：
+
+```java
+javax.naming.CommunicationException: 10.20.70.72:636 [Root exception is java.net.SocketException: java.lang.ClassNotFoundException: io.gsealy.LdapsNoVerifySSLSocketFactory]
+        at java.naming/com.sun.jndi.ldap.Connection.<init>(Connection.java:237)
+        at java.naming/com.sun.jndi.ldap.LdapClient.<init>(LdapClient.java:137)
+        at java.naming/com.sun.jndi.ldap.LdapClient.getInstance(LdapClient.java:1616)
+        at java.naming/com.sun.jndi.ldap.LdapCtx.connect(LdapCtx.java:2752)
+        at java.naming/com.sun.jndi.ldap.LdapCtx.<init>(LdapCtx.java:320)
+        at java.naming/com.sun.jndi.ldap.LdapCtxFactory.getUsingURL(LdapCtxFactory.java:192)
+        at java.naming/com.sun.jndi.ldap.LdapCtxFactory.getUsingURLs(LdapCtxFactory.java:210)
+        at java.naming/com.sun.jndi.ldap.LdapCtxFactory.getLdapCtxInstance(LdapCtxFactory.java:153)
+        at java.naming/com.sun.jndi.ldap.LdapCtxFactory.getInitialContext(LdapCtxFactory.java:83)
+        at java.naming/javax.naming.spi.NamingManager.getInitialContext(NamingManager.java:730)
+        at java.naming/javax.naming.InitialContext.getDefaultInitCtx(InitialContext.java:305)
+        at java.naming/javax.naming.InitialContext.init(InitialContext.java:236)
+        at java.naming/javax.naming.ldap.InitialLdapContext.<init>(InitialLdapContext.java:154)
+        at io.gsealy.Test.main(Test.java:39)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:566)
+        at org.springframework.boot.loader.MainMethodRunner.run(MainMethodRunner.java:47)
+        at org.springframework.boot.loader.Launcher.launch(Launcher.java:86)
+        at org.springframework.boot.loader.Launcher.launch(Launcher.java:50)
+        at org.springframework.boot.loader.JarLauncher.main(JarLauncher.java:51)
+Caused by: java.net.SocketException: java.lang.ClassNotFoundException: io.gsealy.LdapsNoVerifySSLSocketFactory
+        at java.base/javax.net.ssl.DefaultSSLSocketFactory.throwException(SSLSocketFactory.java:263)
+        at java.base/javax.net.ssl.DefaultSSLSocketFactory.createSocket(SSLSocketFactory.java:277)
+        at java.naming/com.sun.jndi.ldap.Connection.createSocket(Connection.java:306)
+        at java.naming/com.sun.jndi.ldap.Connection.<init>(Connection.java:216)
+        ... 21 more
+Caused by: java.lang.ClassNotFoundException: io.gsealy.LdapsNoVerifySSLSocketFactory
+        at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:582)
+        at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:178)
+        at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:521)
+        at java.base/javax.net.ssl.SSLSocketFactory.getDefault(SSLSocketFactory.java:105)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:566)
+        at java.naming/com.sun.jndi.ldap.Connection.createSocket(Connection.java:278)
+        ... 22 more
+```
+
+首先见到`ClassNotFoundException`就在想是不是因为类没有打进去，排查后，这种情况不存在。又试了直接打包，运行正常。本以为是Spring Boot在打包Fat Jar时候的锅，因为其特殊的打包方式，改变了正常包位置，比如说我们这里面的`io.gsealy.LdapsNoVerifySSLSocketFactory`类，其实是放在`BOOT-INF/classes/`目录下，包名也就改成了`BOOT-INF.classes.io.gsealy.LdapsNoVerifySSLSocketFactory`，此时我就认为是Spring Boot的锅了。
+
+上面是完整的异常堆栈信息，具体关注这个地方：
+
+```java
+at java.base/javax.net.ssl.DefaultSSLSocketFactory.createSocket(SSLSocketFactory.java:277)
+at java.naming/com.sun.jndi.ldap.Connection.createSocket(Connection.java:306)
+```
+
+因为ClassLoader的不同，JNDI在反射创建`SSLSocketFactory`时，因为安全检查的问题，无法通过反射调用方法。
+
+```java
+// Connection.java L273-L278
+Class<? extends SocketFactory> socketFactoryClass =
+		(Class<? extends SocketFactory>)Obj.helper.loadClass(socketFactory);
+Method getDefault = socketFactoryClass.getMethod("getDefault", new Class<?>[]{});
+SocketFactory factory = (SocketFactory) getDefault.invoke(null, new Object[]{});
+```
+
+在上面的代码中。会调用`getDefault()`方法。因为`getDefault()`是一个静态方法，方法签名如下：
+
+```java
+public static SocketFactory getDefault() {}
+```
+
+不是重载方法，所以最开始继承`SSLSocketFactory`的时候，没有修改这个方法实现，他还是会去调用`SSLSocketFactory`的`getDefault()`，也就是默认实现。默认实现是不能略过客户端证书验证的。所以会报错。
+
+重新添加`getDefault()`方法即可，就可以删除静态代码块中的参数绑定了。
+
+修改好的文件地址：[LdapsNoVerifySSLSocketFactory.java Gist](https://gist.github.com/Gsealy/e4b7adb21518a259d8a6967301128dbc)
+
+----
+
+
 
