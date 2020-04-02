@@ -351,7 +351,7 @@ public class LdapsJNDIV2Test {
 
 两种方式都可，选择适合自己的就可以啦！🔚
 
-<h3 id = "fix">[Bug Fix] Spring Boot Fat Jar 运行异常</h3>
+<h2 id = "fix">[Bug Fix] Spring Boot Fat Jar 运行异常</h2>
 
 抛出问题如下：
 
