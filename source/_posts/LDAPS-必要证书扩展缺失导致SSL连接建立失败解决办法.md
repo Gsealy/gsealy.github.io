@@ -9,7 +9,7 @@ date: 2020-01-03 10:19:54
 
 >2020年4月1日 更新：
 >
->解决在OpenJDK11下Spring Boot FatJar抛出`ClassNotFoundException`的问题。详见[Spring Boot Fat Jar 运行异常](#[Bug Fix] Spring Boot Fat Jar 运行异常)
+>解决在OpenJDK11下Spring Boot FatJar抛出`ClassNotFoundException`的问题。详见[Spring Boot Fat Jar 运行异常](#fix)
 
 ## 问题复现
 
@@ -351,7 +351,7 @@ public class LdapsJNDIV2Test {
 
 两种方式都可，选择适合自己的就可以啦！🔚
 
-## [Bug Fix] Spring Boot Fat Jar 运行异常
+<h3 id = "fix">[Bug Fix] Spring Boot Fat Jar 运行异常</h3>
 
 抛出问题如下：
 
@@ -425,9 +425,11 @@ public static SocketFactory getDefault() {}
 
 不是重载方法，所以最开始继承`SSLSocketFactory`的时候，没有修改这个方法实现，他还是会去调用`SSLSocketFactory`的`getDefault()`，也就是默认实现。默认实现是不能略过客户端证书验证的。所以会报错。
 
-重新添加`getDefault()`方法即可，就可以删除静态代码块中的参数绑定了。
+重新添加`getDefault()`方法即可，就可以删除静态代码块中的参数绑定了，原来的连接代码也要恢复为正常的，不需要使用**另一种实现**中说的实现。
 
-修改好的文件地址：[LdapsNoVerifySSLSocketFactory.java Gist](https://gist.github.com/Gsealy/e4b7adb21518a259d8a6967301128dbc)
+修改好的文件地址：[Gist Link](https://gist.github.com/Gsealy/e4b7adb21518a259d8a6967301128dbc)
+
+
 
 ----
 
