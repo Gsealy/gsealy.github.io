@@ -1,8 +1,9 @@
 ---
 title: RocketMQ Idle控制导致频繁打印closeChannel问题排查
-date: 2020-04-07 17:42:20
 tags:
-- RocketMQ
+  - RocketMQ
+abbrlink: 60b156cc
+date: 2020-04-07 17:42:20
 ---
 
 ## 问题说明

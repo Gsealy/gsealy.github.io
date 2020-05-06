@@ -1,6 +1,7 @@
 ---
-title: Windows10基于Hyper-V安装Minikube
-date: 2020-5-6 11:35:31
+title: Win10 基于 Hyper-V 安装 Minikube
+abbrlink: 1ef3876c
+date: 2020-05-06 17:23:39
 tags:
 ---
 
@@ -32,7 +33,7 @@ tags:
 
    ![](https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/minikube/minikube_switch_2.png)
 
-记住这里设置的交换机名称，后面创建minikube时需要使用。例如我图中的就是`MiniKubeSwitch`4. 
+记住这里设置的交换机名称，后面创建minikube时需要使用。例如我图中的就是`MiniKubeSwitch`. 
 
 4. 安装minikube
 
