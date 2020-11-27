@@ -1,9 +1,10 @@
 ---
 title: '[译]容器带给DevSecOps的重大挑战'
-date: 2020-11-27 13:46:14
 tags:
-- 镜像加密
-- 翻译
+  - 镜像加密
+  - 翻译
+abbrlink: b6e0f891
+date: 2020-11-27 13:46:14
 ---
 
 > 原文：[Containers Creating Major DevSecOps Challenge - Container Journal](https://containerjournal.com/topics/container-security/containers-creating-major-devsecops-challenge/)

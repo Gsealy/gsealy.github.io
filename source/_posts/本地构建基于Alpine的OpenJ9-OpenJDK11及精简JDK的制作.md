@@ -1,10 +1,11 @@
 ---
 title: 本地构建基于Alpine的OpenJ9 OpenJDK11及精简JDK的制作
-date: 2020-05-08 16:20:16
 tags:
-- Docker
-- Java
-- OpenJ9
+  - Docker
+  - Java
+  - OpenJ9
+abbrlink: '147e3088'
+date: 2020-05-08 16:20:16
 ---
 
 看说OpenJ9的内存占用相较于Hotspot要低，[对比文章](https://billykorando.com/2019/05/03/5-reasons-why-you-should-consider-switching-to-eclipse-openj9/)。所以打算在本地打一个镜像试试。
