@@ -11,7 +11,7 @@ date: 2018-01-29 10:56:23
 
 ### 添加crlBag支持
 
-直接对`PKCS12KeyStorespi.java`进行修改：
+直接对`PKCS12KeyStoreSpi.java`进行修改：
 
 首先是`engineLoad`方法，直接在certbag的判断后添加对crlbag的判断：
 
@@ -107,7 +107,7 @@ if (unmarkedKey) {
 
 在`doStore`中，处理CRL：  
 
-```
+```java
 //
 // handle the crl
 //
