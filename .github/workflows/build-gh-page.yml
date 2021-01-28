@@ -2,20 +2,22 @@ name: build-gh-pages
 
 on:
   push:
-    branches: [ hexo ]
+    branches:
+      - hexo
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout source
       - uses: actions/checkout@v2
         with:
           ref: hexo
-      - name: Setup Nodejs
+      - name: Setup Node.js
       - uses: actions/setup-node@v2.1.4
         with:
-          node-version: '12.x'
+          node-version: "12.x"
       - name: Setup hexo
         env:
           ACTION_DEPLOY_KEY: ${{ secrets.HEXO_DEPLOY_KEY }}
