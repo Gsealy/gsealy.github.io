@@ -1,0 +1,35 @@
+name: build-gh-pages
+
+on:
+  push:
+    branches: [ hexo ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: hexo
+      - name: Setup Nodejs
+      - uses: actions/setup-node@v2.1.4
+        with:
+          node-version: '12.x'
+      - name: Setup hexo
+        env:
+          ACTION_DEPLOY_KEY: ${{ secrets.HEXO_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$ACTION_DEPLOY_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git config --global user.email "jiaojingwei1001@hotmail.com"
+          git config --global user.name "Gsealy"
+          npm install --no-optional hexo-cli -g
+          npm install --no-optional
+      - name: Hexo deploy
+        run: |
+          hexo clean
+          hexo g
+          hexo d
