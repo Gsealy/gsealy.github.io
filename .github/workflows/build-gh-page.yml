@@ -30,10 +30,10 @@ jobs:
           git config --global user.name "Gsealy"
           npm install --no-optional hexo-cli -g
           npm install --no-optional
+          git submodule init
+          git submodule update
       - name: Hexo deploy
         run: |
           hexo clean
           hexo g
-          git submodule init
-          git submodule update
           hexo d
