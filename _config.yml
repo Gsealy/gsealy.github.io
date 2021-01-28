@@ -4,9 +4,9 @@
 
 # Site
 title: Gsealy
-subtitle:	
+subtitle:
 description: Stay hungry. Stay foolish.
-keywords: 
+keywords:
 author: Gsealy
 language: zh-CN
 timezone: Asia/Shanghai
@@ -43,16 +43,16 @@ highlight:
   line_number: true
   auto_detect: false
   tab_replace:
-  
+
 # Home page setting
 # path: Root path for your blogs index page. (default = '')
 # per_page: Posts displayed per page. (0 = disable pagination)
 # order_by: Posts order. (Order by date descending by default)
 index_generator:
-  path: ''
+  path: ""
   per_page: 10
   order_by: -date
-  
+
 # Category & Tag
 default_category: uncategorized
 category_map:
@@ -86,36 +86,44 @@ search:
   limit: 10000
 
 #sitemap
-sitemap: 
+sitemap:
   path: sitemap.xml
 baidusitemap:
   path: baidusitemap.xml
 
 leancloud_counter_security:
   enable_sync: true
+  server_url: https://5ablvdhq.lc-cn-n1-shared.com
   app_id: 5aBLvdhqaRMbqifdf8wbpRVh-gzGzoHsz
   app_key: s0c3WPbvWcpddeKLTJdFFgC7
-  username: Gsealy
-  password: JJW0607@lean
+  username: admin
+  password: qwert12345
 
-# add baidushare 
+leancloud_visitors:
+  enable: true
+  app_id: 5aBLvdhqaRMbqifdf8wbpRVh-gzGzoHsz
+  app_key: s0c3WPbvWcpddeKLTJdFFgC7
+  # Required for apps from CN region
+  server_url: https://5ablvdhq.lc-cn-n1-shared.com
+  # Dependencies: https://github.com/theme-next/hexo-leancloud-counter-security
+  security: true
+
+# add baidushare
 baidushare: true
 
 # abbrlink config
 abbrlink:
-  alg: crc32  # 算法：crc16(default) and crc32
-  rep: hex    # 进制：dec(default) and hex
-  
+  alg: crc32 # 算法：crc16(default) and crc32
+  rep: hex # 进制：dec(default) and hex
+
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
-  -
-    type: git
+  - type: git
     repo: git@github.com:Gsealy/gsealy.github.io.git
     branch: master
   # other deployer
-  -
-    type: leancloud_counter_security_sync
+  - type: leancloud_counter_security_sync
 
 # word count
 symbols_count_time:
