@@ -11,7 +11,7 @@ date: 2021-01-28 16:54:02
 > 2. 代码做适度精简
 # TL；DR
 
-1. Linux TCP的TIME_WAIT状态超时默认为60秒，不可修改
+- Linux TCP的TIME_WAIT状态超时默认为60秒，不可修改
 - Linux TCP的FIN_WAIT_2和TIME_WAIT共用一套实现
 - 可以通过tcp_fin_timeout修改FIN_WAIT_2的超时
 - 3.10内核和4.1+内核对tcp_fin_timeout实现机制有所变化
