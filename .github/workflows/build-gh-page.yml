@@ -14,6 +14,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: hexo
+          submodules: recursive
       - name: Setup Node.js
         uses: actions/setup-node@v2.1.4
         with:
@@ -30,8 +31,8 @@ jobs:
           git config --global user.name "Gsealy"
           npm install --no-optional hexo-cli -g
           npm install --no-optional
-          git submodule init
-          git submodule update
+          # git submodule init
+          # git submodule update
       - name: Hexo deploy
         run: |
           hexo clean
