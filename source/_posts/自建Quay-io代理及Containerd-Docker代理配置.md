@@ -8,6 +8,12 @@ tags:
 
 > 首先的首先，需要一个代理，要不后面的看了也没用
 
+# 问题
+
+安装OLM（Operator Lifecycle Manager） 时，无法下载quay.io的镜像，就算是提前下载到本地也不行。像`CatalogSource`类型，spec中没有`imagePullPolicy`属性，无法修改。
+
+安装参考：https://github.com/operator-framework/operator-lifecycle-manager/blob/master/doc/install/install.md
+
 # Docker镜像下载加速
 
 此时（2021年3月1日），服务器配了镜像代理地址也无法拉取镜像，输出如下：
@@ -203,8 +209,6 @@ registry:2.7.1
 ```
 
 # 参考
-
-[1] [Docker systemd/#httphttps-proxy配置](https://docs.docker.com/config/daemon/systemd/#httphttps-proxy)
 
 [1] [Docker systemd/#httphttps-proxy配置](https://docs.docker.com/config/daemon/systemd/#httphttps-proxy)
 
