@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=6.4.1" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.4.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-shin.ico?v=6.4.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-shin.ico?v=6.4.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.4.1" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '6.4.1',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":true,"scrollpercent":true,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="前言Spring Cloud Gateway（下称SCG）涉及几个最近使用上的问题，自己感觉还挺典型的。所以罗列出来。  缓存请求体会二次过滤 服务端响应头删除  当前环境版本：  Spring Boot 2.1.6.RELEASE Spring Cloud Greenwich.SR3 对应SCG版本2.1.3.RELEASE    缓存请求体会二次过滤 这是一个bug，官方已经在2019.10.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spring Cloud Gateway使用进阶">
+<meta property="og:url" content="https://gsealy.cn/posts/71acf729/index.html">
+<meta property="og:site_name" content="Gsealy">
+<meta property="og:description" content="前言Spring Cloud Gateway（下称SCG）涉及几个最近使用上的问题，自己感觉还挺典型的。所以罗列出来。  缓存请求体会二次过滤 服务端响应头删除  当前环境版本：  Spring Boot 2.1.6.RELEASE Spring Cloud Greenwich.SR3 对应SCG版本2.1.3.RELEASE    缓存请求体会二次过滤 这是一个bug，官方已经在2019.10.">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-11-18T08:35:07.000Z">
+<meta property="article:modified_time" content="2021-03-12T02:40:14.888Z">
+<meta property="article:author" content="Gsealy">
+<meta property="article:tag" content="Spring Cloud">
+<meta property="article:tag" content="Gateway">
+<meta name="twitter:card" content="summary">
+
+
+
+
+
+
+  <link rel="canonical" href="https://gsealy.cn/posts/71acf729/"/>
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Spring Cloud Gateway使用进阶 | Gsealy</title>
+  
+
+
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-126611823-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-126611823-1');
+</script>
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Gsealy</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+    <a href="/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-home"></i> <br />首页</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+    <a href="/about/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-user"></i> <br />关于</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+    <a href="/tags/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />标签</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+    <a href="/categories/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-th"></i> <br />分类</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+    <a href="/archives/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />归档</a>
+  </li>
+
+      
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />搜索</a>
+        </li>
+      
+    </ul>
+  
+
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off"
+             placeholder="搜索..." spellcheck="false"
+             type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://gsealy.cn/posts/71acf729/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Gsealy">
+      <meta itemprop="description" content="Stay hungry. Stay foolish.">
+      <meta itemprop="image" content="/images/avatar.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Gsealy">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Spring Cloud Gateway使用进阶
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-11-18 16:35:07" itemprop="dateCreated datePublished" datetime="2019-11-18T16:35:07+08:00">2019-11-18</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2021-03-12 10:40:14" itemprop="dateModified" datetime="2021-03-12T10:40:14+08:00">2021-03-12</time>
+              
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/posts/71acf729/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/posts/71acf729/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+             <span id="/posts/71acf729/" class="leancloud_visitors" data-flag-title="Spring Cloud Gateway使用进阶">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">阅读次数：</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+            <div class="post-symbolscount">
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">本文字数：</span>
+                
+                <span title="本文字数">28k</span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">26 分钟</span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>Spring Cloud Gateway（下称SCG）涉及几个最近使用上的问题，自己感觉还挺典型的。所以罗列出来。</p>
+<ul>
+<li>缓存请求体会二次过滤</li>
+<li>服务端响应头删除</li>
+</ul>
+<p>当前环境版本：</p>
+<ul>
+<li>Spring Boot 2.1.6.RELEASE</li>
+<li>Spring Cloud Greenwich.SR3<ul>
+<li>对应SCG版本2.1.3.RELEASE</li>
+</ul>
+</li>
+</ul>
+<h2 id="缓存请求体会二次过滤"><a href="#缓存请求体会二次过滤" class="headerlink" title="缓存请求体会二次过滤"></a>缓存请求体会二次过滤</h2><blockquote>
+<p>这是一个bug，官方已经在2019.10.2修复，但是因为本地环境所限，无法直接升级版本</p>
+</blockquote>
+<p>SCG就缓存请求体这一需求，社区很早就已经给出了解决方案，但是方案不是很完美。所以经过了几次的修改，我自己使用上，觉得现在的版本用着还可以。</p>
+<h3 id="问题复现"><a href="#问题复现" class="headerlink" title="问题复现"></a>问题复现</h3><p>工程详见：<a href="https://gsealy.coding.net/public/error-cache-body/error-cache-body/git/files" target="_blank" rel="noopener">error-cache-body</a></p>
+<p>直接下载运行，post请求<code>:8080/post</code>即可，执行：</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http post :<span class="number">8080</span>/post foo=bar</span><br></pre></td></tr></table></figure>
+
+<p>Log如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">2019-11-18 18:07:32.899 TRACE 64684 --- [ctor-http-nio-2] o.s.c.g.f.WeightCalculatorWebFilter      : Weights attr: &#123;&#125;</span><br><span class="line">2019-11-18 18:07:32.913 DEBUG 64684 --- [ctor-http-nio-2] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition httpbin_route applying &#123;_genkey_0&#x3D;&#x2F;post&#125; to Path</span><br><span class="line">2019-11-18 18:07:32.914 DEBUG 64684 --- [ctor-http-nio-2] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition matched: httpbin_route</span><br><span class="line">2019-11-18 18:07:32.921 TRACE 64684 --- [ctor-http-nio-2] o.s.c.g.h.p.RoutePredicateFactory        : Pattern &quot;&#x2F;post&quot; matches against value &quot;&#x2F;post&quot;</span><br><span class="line">2019-11-18 18:07:32.922 DEBUG 64684 --- [ctor-http-nio-2] o.s.c.g.h.RoutePredicateHandlerMapping   : Route matched: httpbin_route</span><br><span class="line">2019-11-18 18:07:32.922 DEBUG 64684 --- [ctor-http-nio-2] o.s.c.g.h.RoutePredicateHandlerMapping   : Mapping [Exchange: POST http:&#x2F;&#x2F;localhost:8080&#x2F;post] to Route&#123;id&#x3D;&#39;httpbin_route&#39;, uri&#x3D;http:&#x2F;&#x2F;httpbin.org:80, order&#x3D;0, predicate&#x3D;Paths: [&#x2F;post], match trailing slash: true, gatewayFilters&#x3D;[]&#125;</span><br><span class="line">2019-11-18 18:07:32.922 DEBUG 64684 --- [ctor-http-nio-2] o.s.c.g.h.RoutePredicateHandlerMapping   : [0a25a24b] Mapped to org.springframework.cloud.gateway.handler.FilteringWebHandler@54bb8e8f</span><br><span class="line">2019-11-18 18:07:32.924 DEBUG 64684 --- [ctor-http-nio-2] o.s.c.g.handler.FilteringWebHandler      : Sorted gatewayFilterFactories: [[GatewayFilterAdapter&#123;delegate&#x3D;org.springframework.cloud.gateway.filter.RemoveCachedBodyFilter@5a08efdc&#125;, order &#x3D; -2147483648], [GatewayFilterAdapter&#123;delegate&#x3D;io.gsealy.cachebody.filter.CacheRequestGlobalFilter@625dfff3&#125;, order &#x3D; -2147482648], [GatewayFilterAdapter&#123;delegate&#x3D;org.springframework.cloud.gateway.filter.AdaptCachedBodyGlobalFilter@72fd8a3c&#125;, order &#x3D; -2147482648], [GatewayFilterAdapter&#123;delegate&#x3D;io.gsealy.cachebody.filter.AccessLogGlobalFilter@5cf3157b&#125;, order &#x3D; -2147463648], [GatewayFilterAdapter&#123;delegate&#x3D;org.springframework.cloud.gateway.filter.NettyWriteResponseFilter@1e9469b8&#125;, order &#x3D; -1], [GatewayFilterAdapter&#123;delegate&#x3D;org.springframework.cloud.gateway.filter.ForwardPathFilter@648d0e6d&#125;, order &#x3D; 0], [GatewayFilterAdapter&#123;delegate&#x3D;org.springframework.cloud.gateway.filter.RouteToRequestUrlFilter@57272109&#125;, order &#x3D; 10000], [GatewayFilterAdapter&#123;delegate&#x3D;org.springframework.cloud.gateway.config.GatewayNoLoadBalancerClientAutoConfiguration$NoLoadBalancerClientFilter@17273273&#125;, order &#x3D; 10100], [GatewayFilterAdapter&#123;delegate&#x3D;org.springframework.cloud.gateway.filter.WebsocketRoutingFilter@79e66b2f&#125;, order &#x3D; 2147483646], [GatewayFilterAdapter&#123;delegate&#x3D;org.springframework.cloud.gateway.filter.NettyRoutingFilter@26350ea2&#125;, order &#x3D; 2147483647], [GatewayFilterAdapter&#123;delegate&#x3D;org.springframework.cloud.gateway.filter.ForwardRoutingFilter@59696551&#125;, order &#x3D; 2147483647]]</span><br><span class="line">2019-11-18 18:07:32.942 TRACE 64684 --- [ctor-http-nio-2] o.s.c.g.support.ServerWebExchangeUtils   : retaining body in exchange attribute</span><br><span class="line">2019-11-18 18:07:32.944 TRACE 64684 --- [ctor-http-nio-2] i.g.c.filter.AccessLogGlobalFilter       : access 1 times.</span><br><span class="line">2019-11-18 18:07:32.946 TRACE 64684 --- [ctor-http-nio-2] o.s.c.g.filter.RouteToRequestUrlFilter   : RouteToRequestUrlFilter start</span><br><span class="line">2019-11-18 18:07:33.246 TRACE 64684 --- [ctor-http-nio-6] o.s.c.gateway.filter.NettyRoutingFilter  : outbound route: 6867371b, inbound: [0a25a24b] </span><br><span class="line">2019-11-18 18:07:34.265 TRACE 64684 --- [ctor-http-nio-6] o.s.c.g.filter.NettyWriteResponseFilter  : NettyWriteResponseFilter start inbound: 6867371b, outbound: [0a25a24b] </span><br><span class="line">2019-11-18 18:07:34.276 TRACE 64684 --- [ctor-http-nio-2] i.g.c.filter.AccessLogGlobalFilter       : access 2 times.</span><br><span class="line">2019-11-18 18:07:34.276 TRACE 64684 --- [ctor-http-nio-2] o.s.c.g.filter.RouteToRequestUrlFilter   : RouteToRequestUrlFilter start</span><br><span class="line">2019-11-18 18:07:34.277 TRACE 64684 --- [ctor-http-nio-2] o.s.c.g.filter.NettyWriteResponseFilter  : NettyWriteResponseFilter start inbound: 6867371b, outbound: [0a25a24b] </span><br><span class="line">2019-11-18 18:07:34.279 TRACE 64684 --- [ctor-http-nio-6] o.s.c.g.filter.RemoveCachedBodyFilter    : releasing cached body in exchange attribute</span><br></pre></td></tr></table></figure>
+
+<p>上面的是一个完整的请求，开启了<code>org.springframework.cloud.gateway</code>的<code>trace</code>日志。其中可以看到<code>AccessLogGlobalFilter</code>访问了两次，提取出来，如下所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">i.g.c.filter.AccessLogGlobalFilter       : access 1 times.</span><br><span class="line">i.g.c.filter.AccessLogGlobalFilter       : access 2 times.</span><br></pre></td></tr></table></figure>
+
+<p>第二次在请求在走filter的时候，其实第一次的请求已经向后端提交了，所以二次请求无效。对响应内容也没有影响，二次请求不会打印<code>retaining body in exchange attribute</code>，所以可以断定重新过的时候，body被删除或者清空了，所以没有缓存的操作，其他的请求内容就会使用一些<strong>不可变</strong>对象封装请求，例如：请求头会使用<code>org.springframework.http.ReadOnlyHttpHeaders</code>对象封装，无法操作请求Header。</p>
+<p>相关Issues：<a href="https://github.com/spring-cloud/spring-cloud-gateway/issues/1315" target="_blank" rel="noopener">gh-1315</a>，PR：<a href="https://github.com/spring-cloud/spring-cloud-gateway/commit/856a2417b6535d54d8f07625dfb48bc5080e87fe" target="_blank" rel="noopener"> 856a2417b6535d54d8f07625dfb48bc5080e87fe </a></p>
+<h3 id="问题解析"><a href="#问题解析" class="headerlink" title="问题解析"></a>问题解析</h3><p>官方的PR解决了整个二次请求的问题，<code>This allows the AdaptCahcedBodyGlobalFilter to not worry about handling empty.</code>现在就可以处理空请求体了。可以直接升级到<code>2.2.0.RC2</code>版本来生效，或者直接把相关代码拷贝到当前实现类中即可。下面这个<code>BodyUtils</code>可以拆掉请求体外部封装并转为Map或String等形式，供后面Filter使用。</p>
+<p>包含如下方法：</p>
+<ul>
+<li>BodyUtils#toRaw(DataBuffer body) - 获取body内的String</li>
+<li>BodyUtils#toFormDataMap(ServerHttpRequest httpRequest, DataBuffer body) - body转为FormData, 针对content-type为<code>application/x-www-form-urlencoded</code></li>
+<li>BodyUtils#cacheRequestBody - 缓存Body，ServerWebExchangeUtils中的完整拷贝</li>
+</ul>
+<p><strong>NOTE：</strong>Reactive Streams中不推荐做这种转换</p>
+<p>地址：<a href="https://gist.github.com/ccb1fe95e03fd854deb53fd4f474d5db" target="_blank" rel="noopener">BodyUtils Gist</a></p>
+<h2 id="服务端响应头删除"><a href="#服务端响应头删除" class="headerlink" title="服务端响应头删除"></a>服务端响应头删除</h2><p>在用<code>httpbin.org</code>做报文请求响应测试时，服务端会添加一系列的响应头，比如一些安全请求头，但是网关本身就开了<code>SecureHeader</code>的Filter，会出现重复</p>
+<h3 id="问题复现-1"><a href="#问题复现-1" class="headerlink" title="问题复现"></a>问题复现</h3><p>当Body缓存没有修复时，执行不到这一步就会抛出异常，因为二次请求会报针对只读请求头的写操作异常（UnsupportedOperationException），当前问题和Body缓存也无关，可以抛开缓存来看。</p>
+<p>工程详见：<a href="https://gsealy.coding.net/public/multi-response-header/multi-response-header/git" target="_blank" rel="noopener">multi-response-header</a></p>
+<p>所有配置都在<code>application.properties</code>中，包括：</p>
+<ul>
+<li>安全头配置 - 全局配置，只开启<code>x-frame-options</code>，值为<code>SAMEORIGIN</code></li>
+<li>转发配置 - 转发至httpbin.org</li>
+</ul>
+<figure class="highlight properties"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">spring.cloud.gateway.filter.secure-headers.frame-options</span>=<span class="string">SAMEORIGIN</span></span><br><span class="line"><span class="meta">spring.cloud.gateway.filter.secure-headers.disable</span>=<span class="string">x-xss-protection,strict-transport-security,x-content-type-options,referrer-policy,content-security-policy,x-download-options,x-permitted-cross-domain-policies</span></span><br><span class="line"><span class="meta">spring.cloud.gateway.default-filters</span>=<span class="string">SecureHeaders</span></span><br></pre></td></tr></table></figure>
+
+<p>执行如下请求：</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">λ http post :<span class="number">8080</span>/post <span class="literal">-v</span></span><br><span class="line">POST /post HTTP/<span class="number">1.1</span></span><br><span class="line">Accept: */*</span><br><span class="line">Accept<span class="literal">-Encoding</span>: gzip, deflate</span><br><span class="line">Connection: keep<span class="literal">-alive</span></span><br><span class="line">Content<span class="literal">-Length</span>: <span class="number">0</span></span><br><span class="line">Host: localhost:<span class="number">8080</span></span><br><span class="line">User<span class="literal">-Agent</span>: HTTPie/<span class="number">1.0</span>.<span class="number">3</span></span><br><span class="line"></span><br><span class="line">HTTP/<span class="number">1.1</span> <span class="number">200</span> OK</span><br><span class="line">Access<span class="literal">-Control</span><span class="literal">-Allow</span><span class="literal">-Credentials</span>: true</span><br><span class="line">Access<span class="literal">-Control</span><span class="literal">-Allow</span><span class="literal">-Origin</span>: *</span><br><span class="line">Content<span class="literal">-Encoding</span>: gzip</span><br><span class="line">Content<span class="literal">-Length</span>: <span class="number">281</span></span><br><span class="line">Content<span class="literal">-Type</span>: application/json</span><br><span class="line">Date: Wed, <span class="number">20</span> Nov <span class="number">2019</span> <span class="number">09</span>:<span class="number">11</span>:<span class="number">38</span> GMT</span><br><span class="line">Referrer<span class="literal">-Policy</span>: no<span class="literal">-referrer</span><span class="literal">-when</span><span class="literal">-downgrade</span></span><br><span class="line">Server: nginx</span><br><span class="line">X<span class="literal">-Content</span><span class="literal">-Type</span><span class="literal">-Options</span>: nosniff</span><br><span class="line">X<span class="literal">-Frame</span><span class="literal">-Options</span>: SAMEORIGIN</span><br><span class="line">X<span class="literal">-Frame</span><span class="literal">-Options</span>: DENY</span><br><span class="line">X<span class="literal">-XSS</span><span class="literal">-Protection</span>: <span class="number">1</span>; mode=block</span><br></pre></td></tr></table></figure>
+
+<p>可以看上面的响应头，有两个<code>X-Frame-Options</code>安全头，<code>SAMEORIGIN</code>是网关添加的，而<code>DENY</code>是httpbin.org响应的请求头。（可以做一个直接请求httpbin的作为对比）</p>
+<h3 id="问题解析-1"><a href="#问题解析-1" class="headerlink" title="问题解析"></a>问题解析</h3><p>这里我们以当前最新的<code>2.1.4.RELEASE</code>版本的SCG为例，<code>SecureHeadersGatewayFilterFactory</code>会在响应前把所需的返回客户端的头写进Exchange的Response中，这不影响Request的发送。但是在处理响应时，会将预先的设置好的头放到完整响应中，具体在<code>NettyRoutingFilter.java</code>的<a href="https://github.com/spring-cloud/spring-cloud-gateway/blob/2f7fc76933a6da43048ac94a39a3db83e417ac6e/spring-cloud-gateway-core/src/main/java/org/springframework/cloud/gateway/filter/NettyRoutingFilter.java#L188" target="_blank" rel="noopener">118行</a>，如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// NettyRoutingFilter.java</span></span><br><span class="line"></span><br><span class="line">ServerHttpResponse response = exchange.getResponse();</span><br><span class="line">.....</span><br><span class="line"><span class="keyword">if</span> (!filteredResponseHeaders.containsKey(HttpHeaders.TRANSFER_ENCODING)</span><br><span class="line">	&amp;&amp; filteredResponseHeaders.containsKey(HttpHeaders.CONTENT_LENGTH)) &#123;</span><br><span class="line">	response.getHeaders().remove(HttpHeaders.TRANSFER_ENCODING);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">exchange.getAttributes().put(CLIENT_RESPONSE_HEADER_NAMES,</span><br><span class="line">	filteredResponseHeaders.keySet());</span><br><span class="line"></span><br><span class="line"><span class="comment">// 响应头整合</span></span><br><span class="line">response.getHeaders().putAll(filteredResponseHeaders);</span><br><span class="line"></span><br><span class="line"><span class="keyword">return</span> Mono.just(res);</span><br><span class="line">.....</span><br></pre></td></tr></table></figure>
+
+<p>在整合之前，会有一个请求头过滤的操作，包含转发头的过滤等，为了去掉后端发回来的相同头，需要先删除响应中的头。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// NettyRoutingFilter.java</span></span><br><span class="line"><span class="comment">// 响应头过滤操作</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// make sure headers filters run after setting status so it is</span></span><br><span class="line"><span class="comment">// available in response</span></span><br><span class="line">HttpHeaders filteredResponseHeaders = HttpHeadersFilter</span><br><span class="line">	.filter(getHeadersFilters(), headers, exchange, Type.RESPONSE);</span><br></pre></td></tr></table></figure>
+
+<p>SCG提供了<code>HttpHeadersFilter</code>，用于过滤请求/响应头，先解析一下这个类：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">HttpHeadersFilter</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 针对下面的filter方法的封装，主要用于过滤Request请求</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">	<span class="function"><span class="keyword">static</span> HttpHeaders <span class="title">filterRequest</span><span class="params">(List&lt;HttpHeadersFilter&gt; filters,</span></span></span><br><span class="line"><span class="function"><span class="params">			ServerWebExchange exchange)</span> </span>&#123;</span><br><span class="line">		HttpHeaders headers = exchange.getRequest().getHeaders();</span><br><span class="line">		<span class="keyword">return</span> filter(filters, headers, exchange, Type.REQUEST);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 使用java stream的filter做过滤</span></span><br><span class="line"><span class="comment">    *</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@param</span> filters header filter集合</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@param</span> input 需要过滤的headers</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@param</span> exchange ServerWebExchange</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@param</span> type 请求/响应，定义在内部枚举类</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">	<span class="function"><span class="keyword">static</span> HttpHeaders <span class="title">filter</span><span class="params">(List&lt;HttpHeadersFilter&gt; filters, HttpHeaders input,</span></span></span><br><span class="line"><span class="function"><span class="params">			ServerWebExchange exchange, Type type)</span> </span>&#123;</span><br><span class="line">		HttpHeaders response = input;</span><br><span class="line">		<span class="keyword">if</span> (filters != <span class="keyword">null</span>) &#123;</span><br><span class="line">			HttpHeaders reduce = filters.stream()</span><br><span class="line">					.filter(headersFilter -&gt; headersFilter.supports(type)).reduce(input,</span><br><span class="line">							(headers, filter) -&gt; filter.filter(headers, exchange),</span><br><span class="line">							(httpHeaders, httpHeaders2) -&gt; &#123;</span><br><span class="line">								httpHeaders.addAll(httpHeaders2);</span><br><span class="line">								<span class="keyword">return</span> httpHeaders;</span><br><span class="line">							&#125;);</span><br><span class="line">			<span class="keyword">return</span> reduce;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">return</span> response;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/**</span></span><br><span class="line"><span class="comment">	 * 需要实现的自定义逻辑</span></span><br><span class="line"><span class="comment">	 * Filters a set of Http Headers.</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@param</span> input Http Headers</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@param</span> exchange a &#123;<span class="doctag">@link</span> ServerWebExchange&#125; that should be filtered</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@return</span> filtered Http Headers</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="function">HttpHeaders <span class="title">filter</span><span class="params">(HttpHeaders input, ServerWebExchange exchange)</span></span>;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">default</span> <span class="keyword">boolean</span> <span class="title">supports</span><span class="params">(Type type)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">return</span> type.equals(Type.REQUEST);</span><br><span class="line">	&#125;</span><br><span class="line">    </span><br><span class="line">	<span class="keyword">enum</span> Type &#123;</span><br><span class="line">		REQUEST, RESPONSE</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>实现一个<code>HttpHeadersFilter</code>，加上自定义逻辑就可以了。ps. 如果要操作响应的话，记得实现一下default方法support()，针对安全头过滤的实现如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 删除上游响应的安全请求头, 添加网关默认安全请求头</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@author</span> Gsealy</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="meta">@Slf</span>4j</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">RemoveSecureHeaderFilter</span> <span class="keyword">implements</span> <span class="title">HttpHeadersFilter</span>, <span class="title">Ordered</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// <span class="doctag">TODO:</span> 可以添加需要删除的安全请求头, 这里只删除X-Frame-Options</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Set&lt;String&gt; secureHeaders = <span class="keyword">new</span> HashSet&lt;&gt;(Arrays.asList(<span class="string">"x-frame-options"</span>));</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> HttpHeaders <span class="title">filter</span><span class="params">(HttpHeaders input, ServerWebExchange exchange)</span> </span>&#123;</span><br><span class="line">        HttpHeaders filtered = <span class="keyword">new</span> HttpHeaders();</span><br><span class="line">        input.entrySet().stream()</span><br><span class="line">                .filter(entry -&gt; !<span class="keyword">this</span>.secureHeaders.contains(entry.getKey().toLowerCase()))</span><br><span class="line">                .forEach(entry -&gt; filtered.addAll(entry.getKey(), entry.getValue()));</span><br><span class="line">        <span class="keyword">if</span> (log.isTraceEnabled()) &#123;</span><br><span class="line">            log.trace(<span class="string">"filtered headers: &#123;&#125;"</span>, filtered);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> filtered;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">supports</span><span class="params">(Type type)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> type.equals(Type.RESPONSE);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getOrder</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>结束！🔚</p>
+<hr>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      <div>
+        <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+  <div>Buy Me A Coffee.</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>打赏</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/images/wechatpay.png" alt="Gsealy 微信支付"/>
+        <p>微信支付</p>
+      </div>
+    
+
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+      <div>
+        <ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>Gsealy</li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://gsealy.cn/posts/71acf729/" title="Spring Cloud Gateway使用进阶">https://gsealy.cn/posts/71acf729/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明出处！</li>
+</ul>
+
+      </div>
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Spring-Cloud/" rel="tag"># Spring Cloud</a>
+          
+            <a href="/tags/Gateway/" rel="tag"># Gateway</a>
+          
+        </div>
+      
+
+      
+      
+        <div class="post-widgets">
+        
+
+        
+
+        
+          
+          <div class="social_share">
+            
+               <div>
+                 
+  <div class="bdsharebuttonbox">
+    <a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a>
+    <a href="#" class="bds_douban" data-cmd="douban" title="分享到豆瓣网"></a>
+    <a href="#" class="bds_sqq" data-cmd="sqq" title="分享到QQ好友"></a>
+    <a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a>
+    <a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a>
+    <a href="#" class="bds_tieba" data-cmd="tieba" title="分享到百度贴吧"></a>
+    <a href="#" class="bds_twi" data-cmd="twi" title="分享到Twitter"></a>
+    <a href="#" class="bds_fbook" data-cmd="fbook" title="分享到Facebook"></a>
+    <a href="#" class="bds_more" data-cmd="more"></a>
+    <a class="bds_count" data-cmd="count"></a>
+  </div>
+  <script>
+    window._bd_share_config = {
+      "common": {
+        "bdText": "",
+        "bdMini": "2",
+        "bdMiniList": false,
+        "bdPic": ""
+      },
+      "share": {
+        "bdSize": "16",
+        "bdStyle": "0"
+      },
+      "image": {
+        "viewList": ["tsina", "douban", "sqq", "qzone", "weixin", "twi", "fbook"],
+        "viewText": "分享到：",
+        "viewSize": "16"
+      }
+    }
+  </script>
+
+<script>
+  with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];
+</script>
+
+               </div>
+            
+            
+          </div>
+        
+        </div>
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/posts/81f201e1/" rel="next" title="根据系统变量修改Log4j2存储位置">
+                <i class="fa fa-chevron-left"></i> 根据系统变量修改Log4j2存储位置
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/posts/d64ac2e9/" rel="prev" title="LDAPS: 必要证书扩展缺失导致SSL连接建立失败解决办法">
+                LDAPS: 必要证书扩展缺失导致SSL连接建立失败解决办法 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="/images/avatar.jpg"
+                alt="Gsealy" />
+            
+              <p class="site-author-name" itemprop="name">Gsealy</p>
+              <p class="site-description motion-element" itemprop="description">Stay hungry. Stay foolish.</p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/%20%7C%7C%20archive">
+                
+                    <span class="site-state-item-count">37</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">51</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  <a href="https://github.com/Gsealy" target="_blank" title="GitHub"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                  
+                </span>
+              
+                <span class="links-of-author-item">
+                  <a href="mailto:gsealy@outlook.com" target="_blank" title="E-Mail"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                  
+                </span>
+              
+            </div>
+          
+
+          
+          
+            <div class="cc-license motion-element" itemprop="license">
+              <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" target="_blank">
+                <img src="/images/cc-by-nc-sa.svg" alt="Creative Commons" />
+              </a>
+            </div>
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存请求体会二次过滤"><span class="nav-number">2.</span> <span class="nav-text">缓存请求体会二次过滤</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#问题复现"><span class="nav-number">2.1.</span> <span class="nav-text">问题复现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#问题解析"><span class="nav-number">2.2.</span> <span class="nav-text">问题解析</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#服务端响应头删除"><span class="nav-number">3.</span> <span class="nav-text">服务端响应头删除</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#问题复现-1"><span class="nav-number">3.1.</span> <span class="nav-text">问题复现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#问题解析-1"><span class="nav-number">3.2.</span> <span class="nav-text">问题解析</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+        <div class="back-to-top">
+          <i class="fa fa-arrow-up"></i>
+          
+            <span id="scrollpercent"><span>0</span>%</span>
+          
+        </div>
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Gsealy</span>
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    
+    <span title="站点总字数">165k</span>
+  
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    
+    <span title="站点阅读时长">2:30</span>
+  
+</div>
+
+
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动 v4.2.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a class="theme-link" target="_blank" href="https://theme-next.org">NexT.Gemini</a> v6.4.1</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.4.1"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.4.1"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.4.1"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.4.1"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.4.1"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.4.1"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.4.1"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  
+  
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(function (item) {
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: '5aBLvdhqaRMbqifdf8wbpRVh-gzGzoHsz',
+        appKey: 's0c3WPbvWcpddeKLTJdFFgC7',
+        placeholder: 'say something...',
+        avatar:'mm',
+        meta:guest,
+        pageSize:'10' || 10,
+        visitor: false
+    });
+  </script>
+
+
+
+  
+
+  <script type="text/javascript">
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url);
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+  <script>
+    
+    function addCount(Counter) {
+      var $visitors = $(".leancloud_visitors");
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+
+      Counter('get', '/classes/Counter', { where: JSON.stringify({ url }) })
+        .done(function ({ results }) {
+          if (results.length > 0) {
+            var counter = results[0];
+            
+              var $element = $(document.getElementById(url));
+              $element.find('.leancloud-visitors-count').text(counter.time + 1);
+            
+            Counter('put', `/classes/Counter/${counter.objectId}`, JSON.stringify({ time: { "__op":"Increment", "amount":1 } }))
+            
+            .fail(function ({ responseJSON }) {
+                console.log('Failed to save Visitor num, with error message: ' + responseJSON.error);
+            })
+          } else {
+            
+              Counter('post', '/classes/Counter', JSON.stringify({ title: title, url: url, time: 1}))
+                .done(function () {
+                  var $element = $(document.getElementById(url));
+                  $element.find('.leancloud-visitors-count').text(1);
+                })
+                .fail(function () {
+                  console.log('Failed to create');
+                });
+            
+          }
+        })
+      .fail(function ({ responseJSON }) {
+        console.log('LeanCloud Counter Error:' + responseJSON.code + " " + responseJSON.error);
+      });
+    }
+    
+
+    $(function() {
+      $.get('https://app-router.leancloud.cn/2/route?appId=' + "5aBLvdhqaRMbqifdf8wbpRVh-gzGzoHsz")
+        .done(function ({ api_server }) {
+          var Counter = function (method, url, data) {
+            return $.ajax({
+              method: method,
+              url: `https://${api_server}/1.1${url}`,
+              headers: {
+                'X-LC-Id': "5aBLvdhqaRMbqifdf8wbpRVh-gzGzoHsz",
+                'X-LC-Key': "s0c3WPbvWcpddeKLTJdFFgC7",
+                'Content-Type': 'application/json',
+              },
+              data: data,
+            });
+          };
+          
+          addCount(Counter);
+          
+        })
+    });
+  </script>
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+  <script type="text/javascript" src="/js/src/js.cookie.js?v=6.4.1"></script>
+  <script type="text/javascript" src="/js/src/scroll-cookie.js?v=6.4.1"></script>
+
+
+  
+
+  
+
+  
+
+</body>
+</html>
