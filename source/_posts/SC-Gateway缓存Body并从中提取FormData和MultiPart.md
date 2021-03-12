@@ -8,6 +8,43 @@ abbrlink: 635b6c82
 date: 2018-11-27 14:11:45
 ---
 
+> 更新于 2021年3月12日
+>
+> 新增具体实例，感谢yvanbaker指出的Part文件上传读取问题
+
+# 示例
+
+通过创建一个`XSS过滤`的全局过滤器，来展示form-data，part，及url的过滤操作。
+
+## 缓存Body
+
+在SCG 2.1.4+，支持body题缓存为`DataBuffer`，去掉了外面的`Flux`包装，具体可以参考[ServerWebExchangeUtils#cacheRequestBody](https://github.com/spring-cloud/spring-cloud-gateway/blob/eb9611a58a46a50a3a330c213a13965854c52deb/spring-cloud-gateway-server/src/main/java/org/springframework/cloud/gateway/support/ServerWebExchangeUtils.java#L332)
+
+那下面就用2.1.1的SCG来做，把body缓存拿到低版本来试试。
+
+新建一个`GlobalFilter`做缓存，把所有操作都封装到`BodyUtils.cacheRequestBody`
+
+```java
+return BodyUtils.cacheRequestBody(exchange, (serverHttpRequest) -> {
+    if (serverHttpRequest == exchange.getRequest()) {
+        return chain.filter(exchange);
+    }
+    return chain.filter(exchange.mutate().request(serverHttpRequest).build());
+});
+```
+
+## XSS过滤
+
+1. 先从Attribute中取到缓存的`Databuffer`
+2. 分别针对header，query，form-data，multipart做过滤操作
+3. 重新封装请求，返回给过滤链（Filter Chain）
+
+具体内容可以查看demo：[escape-request](https://gsealy.coding.net/public/escape-request/escape-request/git/files)
+
+----
+
+# 以下为旧内容，不推荐
+
 ### 缓存Body
 
 缓存Body的话， Gateway给出了一个工厂类，可以直接用。也可以像我有别的需求的，重写一下。

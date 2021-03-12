@@ -28,7 +28,7 @@ SCG就缓存请求体这一需求，社区很早就已经给出了解决方案�
 
 ### 问题复现
 
-工程详见：[error-cache-body]( https://git.dev.tencent.com/Gsealy/error-cache-body.git)
+工程详见：[error-cache-body](https://gsealy.coding.net/public/error-cache-body/error-cache-body/git/files)
 
 直接下载运行，post请求`:8080/post`即可，执行：
 
@@ -91,7 +91,7 @@ i.g.c.filter.AccessLogGlobalFilter       : access 2 times.
 
 当Body缓存没有修复时，执行不到这一步就会抛出异常，因为二次请求会报针对只读请求头的写操作异常（UnsupportedOperationException），当前问题和Body缓存也无关，可以抛开缓存来看。
 
-工程详见：[multi-response-header](https://dev.tencent.com/u/Gsealy/p/multi-response-header/git)
+工程详见：[multi-response-header](https://gsealy.coding.net/public/multi-response-header/multi-response-header/git)
 
 所有配置都在`application.properties`中，包括：
 
