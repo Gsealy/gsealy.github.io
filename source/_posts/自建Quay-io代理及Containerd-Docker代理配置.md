@@ -1,9 +1,10 @@
 ---
 title: 自建Quay.io代理及Containerd&Docker代理配置
-date: 2021-03-01 11:07:36
 tags:
-- Docker
-- Containerd
+  - Docker
+  - Containerd
+abbrlink: a0ac0cdf
+date: 2021-03-01 11:07:36
 ---
 
 > 首先的首先，需要一个代理，要不后面的看了也没用
