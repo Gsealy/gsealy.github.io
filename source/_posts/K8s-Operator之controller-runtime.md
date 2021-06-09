@@ -78,7 +78,9 @@ Reconciler是一个提供给Controller的函数，可以随时使用对象的Nam
 * Reconciler提供了对象的Name / Namespace来进行调协。
 * Reconciler不关心触发调协的事件内容或事件类型。e.g，无论ReplicaSet是创建还是更新，Reconciler总是会将系统中的Pods数量与对象在被调用时指定的数量进行比较。
 
+
 # 引用
+
 
 [1] 什么是 Kubernetes Operator，[https://www.redhat.com/zh/topics/containers/what-is-a-kubernetes-operator](https://www.redhat.com/zh/topics/containers/what-is-a-kubernetes-operator)
 
