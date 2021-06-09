@@ -1,9 +1,10 @@
 ---
 title: HTTP慢速攻击下webflux化解方式
-date: 2021-06-09 14:00:04
 tags:
-- Webflux
-- Netty
+  - Webflux
+  - Netty
+abbrlink: 857074dc
+date: 2021-06-09 14:00:04
 ---
 
 # 前言
