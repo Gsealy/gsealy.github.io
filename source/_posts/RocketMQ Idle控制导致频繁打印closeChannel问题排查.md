@@ -85,7 +85,7 @@ pipeline.addLast(
 
 
 
-其会从`nettyClientConfig`中获取All Idle的空闲时间（All Idle为读写任意idle超时就会触发，详见``io.netty.handler.timeout.IdleStateEvent`），知道了是从哪里来设置的。那就来看看是哪里设置进去的。
+其会从`nettyClientConfig`中获取All Idle的空闲时间（All Idle为读写任意idle超时就会触发，详见`io.netty.handler.timeout.IdleStateEvent`），知道了是从哪里来设置的。那就来看看是哪里设置进去的。
 
 `NettyClientConfig`这个类是在`org.apache.rocketmq.remoting.netty`包中，会在`org.apache.rocketmq.client.impl.factory.MQClientInstance#MQClientInstance()`中构建并使用，这个方法无法通过外部配置进行修改。方法内容具体如下所示：
 
