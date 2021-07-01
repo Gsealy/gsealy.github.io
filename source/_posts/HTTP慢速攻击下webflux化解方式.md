@@ -19,9 +19,13 @@ date: 2021-06-09 14:00:04
 
 慢速HTTP拒绝服务攻击经过不断的演变和发展，主要有三种攻击类型，分别是Slow headers、Slow body、Slow read。以Slow headers为例，Web应用在处理HTTP请求之前都要先接收完所有的HTTP头部，因为HTTP头部中包含了一些Web应用可能用到的重要的信息。攻击者利用这点，发起一个HTTP请求，一直不停的发送HTTP头部，消耗服务器的连接和内存资源。抓包数据可见，攻击客户端与服务器建立TCP连接后，每10秒才向服务器发送一个HTTP头部，而Web服务器在没接收到2个连续的\r\n时，会认为客户端没有发送完头部，而持续的等等客户端发送数据。如果恶意攻击者客户端持续建立这样的连接，那么服务器上可用的连接将一点一点被占满，从而导致拒绝服务。这种攻击类型称为慢速HTTP拒绝服务攻击。
 
-# 处理
+# 处理（影响业务）
 
-Netty可以配置TCP的读写超时，但是测试后无效。需要添加IdleHandler控制HTTP的空闲状态。
+> 2021年7月1日 更新
+>
+> 该处理不适用于SCG（Spring Cloud Gateway）网关类应用，在请求转发至后端后，可能后端处理会超时。导致前面的连接被断开无法做出响应。
+
+Netty可以配置TCP的读写超时，但是测试后无效。需要添加`ReadTimeoutHandler`控制HTTP的读的超时状态。
 
 ```java
 @Configuration
@@ -37,17 +41,8 @@ public class ServerConfig {
             tcp.bootstrap(bootstrap -> bootstrap.childHandler(new ChannelInitializer<>() {
               @Override
               protected void initChannel(Channel channel) {
-                channel.pipeline().addLast(
-                    new IdleStateHandler(0, 0, idleTimeout.toNanos(), NANOSECONDS),
-                    new ChannelDuplexHandler() {
-                      @Override
-                      public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
-                        if (evt instanceof IdleStateEvent) {
-                          ctx.close();
-                        }
-                      }
-                    }
-                );
+                  // 仅处理slow read，不处理slow headers等问题
+                  channel.pipeline().addLast(new ReadTimeoutHandler(9));
               }
             }))
         ));
