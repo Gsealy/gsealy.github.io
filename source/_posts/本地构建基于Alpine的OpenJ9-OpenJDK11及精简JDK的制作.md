@@ -17,29 +17,29 @@ date: 2020-05-08 16:20:16
 参考的构建脚本是AdoptOpenJDK的openjdk-docker项目，具体[链接](https://github.com/AdoptOpenJDK/openjdk-docker/blob/master/11/jre/alpine/Dockerfile.openj9.releases.full)。具体内容就不放这里了，直接去链接里面看就好了。
 
 1. 为什么构建脚本那么长
-
+   
    OpenJ9现在基于Alpine的好像只能用glibc库，但是Alpine官方用的是musl-libc，所以脚本中很大一部分都是在安装glibc，具体可以看：[Installing openjdk 11 on alpine:3.9](https://serverfault.com/a/960783)
 
 2. 国内访问问题
-
+   
    脚本中有很多的curl操作，而且地址对应的是github和archlinux，github用的AWS云存储，国内无法直连，archlinux的archive直连下载只有20kb左右，我搜了下国内的镜像站点都没有收录，所以直接在服务器上构建不可取，需要稍微修改下。
 
 ## 修改脚本
 
 1. 下载文件
-
+   
    先在本地通过代理将所需文件下载至本地，本地搭建一个文件服务器供服务器使用（我这里所用的服务器和工作机是相同网段）。下面也给出了所需的文件，都放在天翼云上了， 国内下载应该是满速。
-
-   https://cloud.189.cn/t/Yn6FjuziEZN3（访问码：rbp5）
+   
+   本地依赖下载：[天翼云盘](https://cloud.189.cn/web/share?code=Yn6Fju7Vb2qq)（访问码：rbp5）
 
 2. 搭建文件服务器
-
+   
    文件服务器很简单，有一个基于Chrome的插件可以直接开启服务。[Web Server for Chrome](https://chrome.google.com/webstore/detail/web-server-for-chrome/ofhbbkphhbklhfoeikjpcbhemlocgigb)
-
+   
    操作很简单，选择文件目录，开启服务就好了，确保服务器能够正常访问即可。
 
 3. 修改URL
-
+   
    在上下两个`RUN`语法糖中都加入`URL_PREFIX="http://10.20.61.27:8887"`（完整Dockerfile见最后），修改所有出现的URL就可以了！别忘记添加Alpine CDN的国内镜像源。
 
 # 构建JDK
@@ -193,7 +193,7 @@ Successfully tagged openjdk:11.0-openj9
 JEP：[JEP 282: jlink: The Java Linker](https://openjdk.java.net/jeps/282)
 
 > 您可以使用jlink工具将一组模块及其依赖项组装和优化为自定义运行时映像。
->
+> 
 > ps. 这也就是OpenJDK9+没有再提供jre的原因，这个比jre强多了好吗，想咋改就咋改。
 
 Jlink使用介绍：[Using jlink to Build Java Runtimes for non-Modular Applications](https://medium.com/azulsystems/using-jlink-to-build-java-runtimes-for-non-modular-applications-9568c5e70ef4)
@@ -297,12 +297,12 @@ Alpine配置时区需要安装`tzdata`，首先替换仓库为中科大的镜像
 ...
 
 RUN set -eux; \
-	sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories; \
-	apk add --no-cache --virtual .build-deps binutils tzdata; \
+    sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories; \
+    apk add --no-cache --virtual .build-deps binutils tzdata; \
     cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime; \
     echo "Asia/Shanghai" > /etc/timezone; \
-	apk del tzdata .build-deps;
-	
+    apk del tzdata .build-deps;
+
 ...
 ```
 
@@ -316,11 +316,9 @@ ENV LANG="zh_CN.UTF-8" LC_ALL="zh_CN.UTF-8"
 
 RUN set -eux; \
     echo "export LANG=$LANG" > /etc/profile.d/locale.sh;
-    
+
 ...
 ```
-
-
 
 # 附：Dockerfile
 
@@ -380,7 +378,6 @@ ENV JAVA_HOME=/opt/java/openjdk \
     PATH="/opt/java/openjdk/bin:$PATH"
 ENV JAVA_TOOL_OPTIONS="-XX:+IgnoreUnrecognizedVMOptions -XX:+UseContainerSupport -XX:+IdleTuningCompactOnIdle -XX:+IdleTuningGcOnIdle"
 CMD ["jshell"]
-
 ```
 
 ## Openj9-slim
@@ -432,12 +429,12 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositorie
     && rm -rf /tmp/*.apk /tmp/gcc /tmp/gcc-libs.tar.xz /tmp/libz /tmp/libz.tar.xz /var/cache/apk/*
 
 RUN set -eux; \
-	sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories; \
-	apk add --no-cache --virtual .build-deps binutils tzdata; \
+    sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories; \
+    apk add --no-cache --virtual .build-deps binutils tzdata; \
     echo "export LANG=$LANG" > /etc/profile.d/locale.sh; \
     cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime; \
     echo "Asia/Shanghai" > /etc/timezone; \
-	apk del tzdata .build-deps;
+    apk del tzdata .build-deps;
 
 ENV JAVA_HOME=/opt/openjdk/jre \
     PATH=/opt/openjdk/jre/bin:$PATH
@@ -452,9 +449,9 @@ Alpine官方已经提供apk，直接精简就可以了
 FROM alpine:3.11 as deps
 
 RUN set -eux; \
-	sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories; \
-	apk --no-cache add openjdk11-jdk openjdk11-jmods; \
-	/usr/lib/jvm/java-11-openjdk/bin/jlink --no-header-files --no-man-pages --compress=0 --strip-debug \
+    sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories; \
+    apk --no-cache add openjdk11-jdk openjdk11-jmods; \
+    /usr/lib/jvm/java-11-openjdk/bin/jlink --no-header-files --no-man-pages --compress=0 --strip-debug \
     --add-modules java.base,java.logging,jdk.unsupported \
     --output /opt/openjdk/jre;
 
@@ -466,12 +463,12 @@ ENV LANG="zh_CN.UTF-8" LC_ALL="zh_CN.UTF-8"
 COPY --from=deps /opt/openjdk/jre /opt/openjdk/jre
 
 RUN set -eux; \
-	sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories; \
-	apk add --no-cache --virtual .build-deps binutils tzdata; \
+    sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories; \
+    apk add --no-cache --virtual .build-deps binutils tzdata; \
     echo "export LANG=$LANG" > /etc/profile.d/locale.sh; \
     cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime; \
     echo "Asia/Shanghai" > /etc/timezone; \
-	apk del tzdata .build-deps;
+    apk del tzdata .build-deps;
 
 ENV JAVA_HOME=/opt/openjdk/jre \
     PATH="/opt/openjdk/jre/lib:/opt/openjdk/jre/bin:$PATH"
