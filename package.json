@@ -7,6 +7,10 @@
   },
   "dependencies": {
     "babel-runtime": "^6.26.0",
+    "gulp": "^4.0.2",
+    "gulp-clean-css": "^4.3.0",
+    "gulp-html-minifier-terser": "^7.0.0-beta.0",
+    "gulp-uglify-es": "^3.0.0",
     "hexo": "^4.2.0",
     "hexo-abbrlink": "^2.0.5",
     "hexo-cli": "^4.2.0",
