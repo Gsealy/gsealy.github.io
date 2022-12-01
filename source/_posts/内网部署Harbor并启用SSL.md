@@ -46,10 +46,10 @@ export Ali_Secret="jlsdflanljkljlfdsaklkjflsa"
 **申请证书**
 
 ```shell
-acme.sh --issue --dns dns_ali -d gsealy.cn -d *.gsealy.cn
+acme.sh --issue --dns dns_ali -d gsealy.net -d *.gsealy.net
 ```
 
-申请成功后，CA证书、csr、key、证书和证书链都会在指定目录下。比如我的就在`/root/.acme.sh/gsealy.cn`，申请的同时会自动配置定时任务，到既定时间会更新证书。
+申请成功后，CA证书、csr、key、证书和证书链都会在指定目录下。比如我的就在`/root/.acme.sh/gsealy.net`，申请的同时会自动配置定时任务，到既定时间会更新证书。
 
 **复制证书**
 
@@ -58,7 +58,7 @@ acme.sh --issue --dns dns_ali -d gsealy.cn -d *.gsealy.cn
 注：-d 就是申请的域名
 
 ```shell
-acme.sh --install-cert -d gsealy.cn --install-cert --cert-file /opt/ssl/gsealy.cn/gsealy.cn.cer --ca-file /opt/ssl/gsealy.cn/ca.cer --key-file /opt/ssl/gsealy.cn/gsealy.cn.key --fullchain-file /opt/ssl/gsealy.cn/fullchain.cer
+acme.sh --install-cert -d gsealy.net --install-cert --cert-file /opt/ssl/gsealy.net/gsealy.net.cer --ca-file /opt/ssl/gsealy.net/ca.cer --key-file /opt/ssl/gsealy.net/gsealy.net.key --fullchain-file /opt/ssl/gsealy.net/fullchain.cer
 ```
 
 这样就把所有的证书都安装在指定目录了
@@ -77,34 +77,34 @@ acme.sh --install-cert -d gsealy.cn --install-cert --cert-file /opt/ssl/gsealy.c
 
 ```yaml
 # 二级域名，DNS配置A类型解析为内网IP
-hostname: harbor.gsealy.cn
+hostname: harbor.gsealy.net
 https:
   # https port for harbor, default is 443
   port: 443
   # The path of cert and key files for nginx
-  certificate: /opt/ssl/gsealy.cn/gsealy.cn.cer
-  private_key: /opt/ssl/gsealy.cn/gsealy.cn.key
+  certificate: /opt/ssl/gsealy.net/gsealy.net.cer
+  private_key: /opt/ssl/gsealy.net/gsealy.net.key
 ```
 
 执行`./prepare`，然后执行`install.sh`即可
 
-浏览器访问`harbor.gsealy.cn`，可以看到已经启用https，查看证书也是有效的，证书链也可以显示。
+浏览器访问`harbor.gsealy.net`，可以看到已经启用https，查看证书也是有效的，证书链也可以显示。
 
 ***** 但是在Docker中，需要配置CA证书，否则验证不通过
 
 ```shell
-[root@localhost /]# docker login harbor.gsealy.cn
+[root@localhost /]# docker login harbor.gsealy.net
 Username: xxxxxxx
 Password: 
-Error response from daemon: Get https://harbor.gsealy.cn/v2/: x509: certificate signed by unknown authority
+Error response from daemon: Get https://harbor.gsealy.net/v2/: x509: certificate signed by unknown authority
 ```
 
 此时需要复制CA证书到Docker目录，此种方法不需要重启Docker daemon
 
 ```shell
-[root@localhost /]# cp /opt/ssl/gsealy.cn/ca.cer /etc/docker/certs.d/harbor.gsealy.cn
-[root@localhost /]# cp /opt/ssl/gsealy.cn/gsealy.cn.cer /etc/docker/certs.d/harbor.gsealy.cn/
-[root@localhost /]# cp /opt/ssl/gsealy.cn/gsealy.cn.key /etc/docker/certs.d/harbor.gsealy.cn/
+[root@localhost /]# cp /opt/ssl/gsealy.net/ca.cer /etc/docker/certs.d/harbor.gsealy.net
+[root@localhost /]# cp /opt/ssl/gsealy.net/gsealy.net.cer /etc/docker/certs.d/harbor.gsealy.net/
+[root@localhost /]# cp /opt/ssl/gsealy.net/gsealy.net.key /etc/docker/certs.d/harbor.gsealy.net/
 ```
 
 

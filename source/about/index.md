@@ -4,7 +4,7 @@ date: 2018-09-28 09:29:07
 comments: false
 ---
 
-# Hey 👋, I'm [Gsealy](https://gsealy.cn/)
+# Hey 👋, I'm [Gsealy](https://gsealy.net/)
 
 I'm currently a information security researcher. I am working on cryptography, cloud security, msa, k8s, etc.
 

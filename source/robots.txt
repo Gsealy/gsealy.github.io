@@ -11,5 +11,5 @@ Disallow: /fonts/
 Disallow: /vendors/
 Disallow: /fancybox/
 
-Sitemap: https://gsealy.cn/sitemap.xml
-Sitemap: https://gsealy.cn/baidusitemap.xml
+Sitemap: https://gsealy.net/sitemap.xml
+Sitemap: https://gsealy.net/baidusitemap.xml

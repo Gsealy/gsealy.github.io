@@ -13,7 +13,7 @@ timezone: Asia/Shanghai
 
 # URL
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'
-url: https://gsealy.cn
+url: https://gsealy.net
 root: /
 permalink: posts/:abbrlink/
 permalink_defaults:
@@ -113,8 +113,8 @@ baidushare: true
 
 # abbrlink config
 abbrlink:
-  alg: crc32 # Ëã·¨£ºcrc16(default) and crc32
-  rep: hex # ½øÖÆ£ºdec(default) and hex
+  alg: crc32 # ï¿½ã·¨ï¿½ï¿½crc16(default) and crc32
+  rep: hex # ï¿½ï¿½ï¿½Æ£ï¿½dec(default) and hex
 
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
