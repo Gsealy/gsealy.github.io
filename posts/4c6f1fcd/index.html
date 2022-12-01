@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=6.4.1" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.4.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-shin.ico?v=6.4.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-shin.ico?v=6.4.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.4.1" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '6.4.1',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":true,"scrollpercent":true,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="以3.10版本内核为例，4.1+版本内核在处理FIN-WAIT-2时有所改变，后面会提到 代码做适度精简   TL；DR Linux TCP的TIME_WAIT状态超时默认为60秒，不可修改 Linux TCP的FIN_WAIT_2和TIME_WAIT共用一套实现 可以通过tcp_fin_timeout修改FIN_WAIT_2的超时 3.10内核和4.1+内核对tcp_fin_timeout实">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux处理TIME_WAIT和FIN_WAIT_2状态">
+<meta property="og:url" content="https://gsealy.net/posts/4c6f1fcd/index.html">
+<meta property="og:site_name" content="Gsealy">
+<meta property="og:description" content="以3.10版本内核为例，4.1+版本内核在处理FIN-WAIT-2时有所改变，后面会提到 代码做适度精简   TL；DR Linux TCP的TIME_WAIT状态超时默认为60秒，不可修改 Linux TCP的FIN_WAIT_2和TIME_WAIT共用一套实现 可以通过tcp_fin_timeout修改FIN_WAIT_2的超时 3.10内核和4.1+内核对tcp_fin_timeout实">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/linux/tcp-state.png">
+<meta property="og:image" content="https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/linux/fin.png">
+<meta property="article:published_time" content="2021-01-28T08:54:02.000Z">
+<meta property="article:modified_time" content="2022-12-01T01:15:59.250Z">
+<meta property="article:author" content="Gsealy">
+<meta property="article:tag" content="Linux">
+<meta property="article:tag" content="TCP">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/linux/tcp-state.png">
+
+
+
+
+
+
+  <link rel="canonical" href="https://gsealy.net/posts/4c6f1fcd/"/>
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Linux处理TIME_WAIT和FIN_WAIT_2状态 | Gsealy</title>
+  
+
+
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-126611823-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-126611823-1');
+</script>
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Gsealy</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+    <a href="/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-home"></i> <br />首页</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+    <a href="/about/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-user"></i> <br />关于</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+    <a href="/tags/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />标签</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+    <a href="/categories/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-th"></i> <br />分类</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+    <a href="/archives/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />归档</a>
+  </li>
+
+      
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />搜索</a>
+        </li>
+      
+    </ul>
+  
+
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off"
+             placeholder="搜索..." spellcheck="false"
+             type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://gsealy.net/posts/4c6f1fcd/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Gsealy">
+      <meta itemprop="description" content="Stay hungry. Stay foolish.">
+      <meta itemprop="image" content="/images/avatar.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Gsealy">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Linux处理TIME_WAIT和FIN_WAIT_2状态
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2021-01-28 16:54:02" itemprop="dateCreated datePublished" datetime="2021-01-28T16:54:02+08:00">2021-01-28</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2022-12-01 09:15:59" itemprop="dateModified" datetime="2022-12-01T09:15:59+08:00">2022-12-01</time>
+              
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/posts/4c6f1fcd/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/posts/4c6f1fcd/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+             <span id="/posts/4c6f1fcd/" class="leancloud_visitors" data-flag-title="Linux处理TIME_WAIT和FIN_WAIT_2状态">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">阅读次数：</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+            <div class="post-symbolscount">
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">本文字数：</span>
+                
+                <span title="本文字数">46k</span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">42 分钟</span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<ol>
+<li>以3.10版本内核为例，4.1+版本内核在处理FIN-WAIT-2时有所改变，后面会提到</li>
+<li>代码做适度精简</li>
+</ol>
+</blockquote>
+<h1 id="TL；DR"><a href="#TL；DR" class="headerlink" title="TL；DR"></a>TL；DR</h1><ul>
+<li>Linux TCP的TIME_WAIT状态超时默认为60秒，不可修改</li>
+<li>Linux TCP的FIN_WAIT_2和TIME_WAIT共用一套实现</li>
+<li>可以通过tcp_fin_timeout修改FIN_WAIT_2的超时</li>
+<li>3.10内核和4.1+内核对tcp_fin_timeout实现机制有所变化</li>
+<li>reuse和recycle都需要开启timestamp，对NAT不友好</li>
+<li>推荐使用4.3+内核，参数配置可以看最后</li>
+</ul>
+<p><img src="https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/linux/tcp-state.png" alt=""></p>
+<p>图1. TCP 状态机</p>
+<h1 id="源码解析"><a href="#源码解析" class="headerlink" title="源码解析"></a>源码解析</h1><p><img src="https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/linux/fin.png" alt=""></p>
+<h3 id="入口"><a href="#入口" class="headerlink" title="入口"></a>入口</h3><p>初步认为<code>tcp_input.c#tcp_fin</code>为此次的入口，主动断开连接方收到被关闭方发出的<code>FIN</code>指令后，进入time-wait状态做进一步处理。</p>
+<p>link：<a href="https://lxr.missinglinkelectronics.com/linux+v3.10/net/ipv4/tcp_input.c#L5812" target="_blank" rel="noopener">linux/net/ipv4/tcp_input.c</a></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> *  /net/ipv4/tcp_input.c</span></span><br><span class="line"><span class="comment"> *  ...</span></span><br><span class="line"><span class="comment"> *	If we are in FINWAIT-2, a received FIN moves us to TIME-WAIT.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">tcp_fin</span><span class="params">(struct sock *sk)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">tcp_sock</span> *<span class="title">tp</span> = <span class="title">tcp_sk</span>(<span class="title">sk</span>);</span></span><br><span class="line"></span><br><span class="line">	inet_csk_schedule_ack(sk);</span><br><span class="line"></span><br><span class="line">	sk-&gt;sk_shutdown |= RCV_SHUTDOWN;</span><br><span class="line">	sock_set_flag(sk, SOCK_DONE);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">switch</span> (sk-&gt;sk_state) &#123;</span><br><span class="line">	<span class="keyword">case</span> TCP_SYN_RECV:</span><br><span class="line">	<span class="keyword">case</span> TCP_ESTABLISHED:</span><br><span class="line">		...</span><br><span class="line">	<span class="keyword">case</span> TCP_CLOSE_WAIT:</span><br><span class="line">	<span class="keyword">case</span> TCP_CLOSING:</span><br><span class="line">		...</span><br><span class="line">	<span class="keyword">case</span> TCP_LAST_ACK:</span><br><span class="line">		...</span><br><span class="line">	<span class="keyword">case</span> TCP_FIN_WAIT1:</span><br><span class="line">		...</span><br><span class="line">	<span class="keyword">case</span> TCP_FIN_WAIT2:</span><br><span class="line">		<span class="comment">/* 接收被关闭连接方的FIN -- 发送 ACK，转到TIME_WAIT状态 */</span></span><br><span class="line">		tcp_send_ack(sk);</span><br><span class="line">		tcp_time_wait(sk, TCP_TIME_WAIT, <span class="number">0</span>);</span><br><span class="line">		<span class="keyword">break</span>;</span><br><span class="line">	<span class="keyword">default</span>:</span><br><span class="line">		<span class="comment">/* Only TCP_LISTEN and TCP_CLOSE are left, in these</span></span><br><span class="line"><span class="comment">		 * cases we should never reach this piece of code.</span></span><br><span class="line"><span class="comment">		 */</span></span><br><span class="line">		pr_err(<span class="string">"%s: Impossible, sk-&gt;sk_state=%d\n"</span>,</span><br><span class="line">		       __func__, sk-&gt;sk_state);</span><br><span class="line">		<span class="keyword">break</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="处理time-wait"><a href="#处理time-wait" class="headerlink" title="处理time-wait"></a>处理time-wait</h3><p>在<code>tcp_minisocks.c</code>中，会处理状态回收，控制time-wait桶大小等，先在这里给出结论：</p>
+<p>a)<code>net.ipv4.tcp_tw_recycle</code>需要和<code>net.ipv4.tcp_timestamps</code>同时打开才可以快速回收<br>b) 连接状态为TIME_WAIT时，清理时间为默认60s，不可修改</p>
+<p>link：<a href="https://lxr.missinglinkelectronics.com/linux+v3.10/net/ipv4/tcp_minisocks.c#L276" target="_blank" rel="noopener">linux/net/ipv4/tcp_minisocks.c</a></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// tcp_death_row 结构</span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">在tcp_death_row中存在两种回收机制，一种是timeout较长的sock口,放入tw_timer定时器的队列中，</span></span><br><span class="line"><span class="comment">一种timeout较短的套接口，放入twcal_timer定时器的队列中；</span></span><br><span class="line"><span class="comment">tw_timer定时器超时精度为 TCP_TIMEWAIT_LEN / INET_TWDR_TWKILL_SLOTS=7.5s</span></span><br><span class="line"><span class="comment">而 twcal_timer 的定时单位并不是固定的值，而是根据常量 HZ 定义的, 在3.10内核中为250HZ，</span></span><br><span class="line"><span class="comment">超时精度为：1&lt;&lt;INET_TWDR_RECYCLE_TICK个tick,</span></span><br><span class="line"><span class="comment">即 $((1&lt;&lt;5))=32个tick, 也就是相当于约 32/250≈1/8s的精度</span></span><br><span class="line"><span class="comment">具体处理在inet_twsk_schedule()方法中</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">inet_timewait_death_row</span> <span class="title">tcp_death_row</span> = &#123;</span></span><br><span class="line">	.sysctl_max_tw_buckets = NR_FILE * <span class="number">2</span>,</span><br><span class="line">	.period		= TCP_TIMEWAIT_LEN / INET_TWDR_TWKILL_SLOTS,</span><br><span class="line">	.death_lock	= __SPIN_LOCK_UNLOCKED(tcp_death_row.death_lock),</span><br><span class="line">	.hashinfo	= &amp;tcp_hashinfo,</span><br><span class="line">	.tw_timer	= TIMER_INITIALIZER(inet_twdr_hangman, <span class="number">0</span>,</span><br><span class="line">					    (<span class="keyword">unsigned</span> <span class="keyword">long</span>)&amp;tcp_death_row),</span><br><span class="line">	.twkill_work	= __WORK_INITIALIZER(tcp_death_row.twkill_work,</span><br><span class="line">					     inet_twdr_twkill_work),</span><br><span class="line"><span class="comment">/* Short-time timewait calendar */</span></span><br><span class="line"></span><br><span class="line">	.twcal_hand	= <span class="number">-1</span>,</span><br><span class="line">	.twcal_timer	= TIMER_INITIALIZER(inet_twdr_twcal_tick, <span class="number">0</span>,</span><br><span class="line">					    (<span class="keyword">unsigned</span> <span class="keyword">long</span>)&amp;tcp_death_row),</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * /net/ipv4/tcp_minisocks.c</span></span><br><span class="line"><span class="comment"> * 将socket状态转为time-wait或者fin-wait-2状态</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">tcp_time_wait</span><span class="params">(struct sock *sk, <span class="keyword">int</span> state, <span class="keyword">int</span> timeo)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">inet_timewait_sock</span> *<span class="title">tw</span> = <span class="title">NULL</span>;</span></span><br><span class="line">	<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">inet_connection_sock</span> *<span class="title">icsk</span> = <span class="title">inet_csk</span>(<span class="title">sk</span>);</span></span><br><span class="line">	<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">tcp_sock</span> *<span class="title">tp</span> = <span class="title">tcp_sk</span>(<span class="title">sk</span>);</span></span><br><span class="line">	<span class="keyword">bool</span> recycle_ok = <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 是否开启了recycle，且存在时间戳扩展，标记recycle_ok为true，为后面回收做准备</span></span><br><span class="line">	<span class="keyword">if</span> (tcp_death_row.sysctl_tw_recycle &amp;&amp; tp-&gt;rx_opt.ts_recent_stamp)</span><br><span class="line">		recycle_ok = tcp_remember_stamp(sk);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 如果当前等待回收time-wait的数量小于配置的桶大小，把当前sock扔到处理队列里面</span></span><br><span class="line">	<span class="keyword">if</span> (tcp_death_row.tw_count &lt; tcp_death_row.sysctl_max_tw_buckets) <span class="comment">// 2</span></span><br><span class="line">		tw = inet_twsk_alloc(sk, state);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (tw != <span class="literal">NULL</span>) &#123;</span><br><span class="line">		<span class="class"><span class="keyword">struct</span> <span class="title">tcp_timewait_sock</span> *<span class="title">tcptw</span> = <span class="title">tcp_twsk</span>((<span class="title">struct</span> <span class="title">sock</span> *)<span class="title">tw</span>);</span></span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span> rto = (icsk-&gt;icsk_rto &lt;&lt; <span class="number">2</span>) - (icsk-&gt;icsk_rto &gt;&gt; <span class="number">1</span>); <span class="comment">// 3.5*RTO</span></span><br><span class="line">		<span class="class"><span class="keyword">struct</span> <span class="title">inet_sock</span> *<span class="title">inet</span> = <span class="title">inet_sk</span>(<span class="title">sk</span>);</span></span><br><span class="line"></span><br><span class="line">		tw-&gt;tw_transparent	= inet-&gt;transparent;</span><br><span class="line">		tw-&gt;tw_mark		= sk-&gt;sk_mark;</span><br><span class="line">		tw-&gt;tw_rcv_wscale	= tp-&gt;rx_opt.rcv_wscale;</span><br><span class="line">		tcptw-&gt;tw_rcv_nxt	= tp-&gt;rcv_nxt;</span><br><span class="line">		tcptw-&gt;tw_snd_nxt	= tp-&gt;snd_nxt;</span><br><span class="line">		tcptw-&gt;tw_rcv_wnd	= tcp_receive_window(tp);</span><br><span class="line">		tcptw-&gt;tw_ts_recent	= tp-&gt;rx_opt.ts_recent;</span><br><span class="line">		tcptw-&gt;tw_ts_recent_stamp = tp-&gt;rx_opt.ts_recent_stamp;</span><br><span class="line">		tcptw-&gt;tw_ts_offset	= tp-&gt;tsoffset;</span><br><span class="line">		tcptw-&gt;tw_last_oow_ack_time = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">... ifdef endif...</span><br><span class="line"></span><br><span class="line">		<span class="comment">/* Get the TIME_WAIT timeout firing. */</span></span><br><span class="line">    <span class="comment">// 从tcp_fin方法过来的入参timeo为0，会被重新赋值为3.5rto</span></span><br><span class="line">		<span class="keyword">if</span> (timeo &lt; rto)</span><br><span class="line">			timeo = rto;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果需要回收话，设置超时时间为当前rto；否则超时时间设为60s，当状态是time-wait时，</span></span><br><span class="line">    <span class="comment">// timeo也设置为60s，这是后面处理状态的时间</span></span><br><span class="line">    <span class="comment">// btw，rto的值，一般都会小于配置的值，除非双方出现网络抖动和硬件异常需要多次超时重传</span></span><br><span class="line">		<span class="keyword">if</span> (recycle_ok) &#123;</span><br><span class="line">			tw-&gt;tw_timeout = rto;</span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			tw-&gt;tw_timeout = TCP_TIMEWAIT_LEN;</span><br><span class="line">			<span class="keyword">if</span> (state == TCP_TIME_WAIT)</span><br><span class="line">				timeo = TCP_TIMEWAIT_LEN;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		<span class="comment">/* Linkage updates. */</span></span><br><span class="line">		__inet_twsk_hashdance(tw, sk, &amp;tcp_hashinfo);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 两种timer</span></span><br><span class="line">    <span class="comment">// 1. TCP_TIMEWAIT_LEN定义的60s的timer</span></span><br><span class="line">    <span class="comment">// 2. TIMEOUT为3.5*RTO的timer</span></span><br><span class="line">		inet_twsk_schedule(tw, &amp;tcp_death_row, timeo,</span><br><span class="line">				   TCP_TIMEWAIT_LEN);</span><br><span class="line">		inet_twsk_put(tw);</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="comment">/* Sorry, if we're out of memory, just CLOSE this</span></span><br><span class="line"><span class="comment">		 * socket up.  We've got bigger problems than</span></span><br><span class="line"><span class="comment">		 * non-graceful socket closings.</span></span><br><span class="line"><span class="comment">		 */</span></span><br><span class="line">		NET_INC_STATS_BH(sock_net(sk), LINUX_MIB_TCPTIMEWAITOVERFLOW);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	tcp_update_metrics(sk);</span><br><span class="line">	tcp_done(sk);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="time-wait轮询处理"><a href="#time-wait轮询处理" class="headerlink" title="time-wait轮询处理"></a>time-wait轮询处理</h3><p>根据timeo值大小计算slot，判断后，进入不同的timer，等待清理</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* /net/ipv4/inet_timewait_sock.c</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">inet_twsk_schedule</span><span class="params">(struct inet_timewait_sock *tw,</span></span></span><br><span class="line"><span class="function"><span class="params">		       struct inet_timewait_death_row *twdr,</span></span></span><br><span class="line"><span class="function"><span class="params">		       <span class="keyword">const</span> <span class="keyword">int</span> timeo, <span class="keyword">const</span> <span class="keyword">int</span> timewait_len)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">hlist_head</span> *<span class="title">list</span>;</span></span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">int</span> slot;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* timeout := RTO * 3.5</span></span><br><span class="line"><span class="comment">	 *</span></span><br><span class="line"><span class="comment">	 * 3.5 = 1+2+0.5 to wait for two retransmits.</span></span><br><span class="line"><span class="comment">	 *</span></span><br><span class="line"><span class="comment">	 * RATIONALE: if FIN arrived and we entered TIME-WAIT state,</span></span><br><span class="line"><span class="comment">	 * our ACK acking that FIN can be lost. If N subsequent retransmitted</span></span><br><span class="line"><span class="comment">	 * FINs (or previous seqments) are lost (probability of such event</span></span><br><span class="line"><span class="comment">	 * is p^(N+1), where p is probability to lose single packet and</span></span><br><span class="line"><span class="comment">	 * time to detect the loss is about RTO*(2^N - 1) with exponential</span></span><br><span class="line"><span class="comment">	 * backoff). Normal timewait length is calculated so, that we</span></span><br><span class="line"><span class="comment">	 * waited at least for one retransmitted FIN (maximal RTO is 120sec).</span></span><br><span class="line"><span class="comment">	 * [ BTW Linux. following BSD, violates this requirement waiting</span></span><br><span class="line"><span class="comment">	 *   only for 60sec, we should wait at least for 240 secs.</span></span><br><span class="line"><span class="comment">	 *   Well, 240 consumes too much of resources 8)</span></span><br><span class="line"><span class="comment">	 * ]</span></span><br><span class="line"><span class="comment">	 * This interval is not reduced to catch old duplicate and</span></span><br><span class="line"><span class="comment">	 * responces to our wandering segments living for two MSLs.</span></span><br><span class="line"><span class="comment">	 * However, if we use PAWS to detect</span></span><br><span class="line"><span class="comment">	 * old duplicates, we can reduce the interval to bounds required</span></span><br><span class="line"><span class="comment">	 * by RTO, rather than MSL. So, if peer understands PAWS, we</span></span><br><span class="line"><span class="comment">	 * kill tw bucket after 3.5*RTO (it is important that this number</span></span><br><span class="line"><span class="comment">	 * is greater than TS tick!) and detect old duplicates with help</span></span><br><span class="line"><span class="comment">	 * of PAWS.</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">  <span class="comment">// 通过timeout值计算slot号</span></span><br><span class="line">	slot = (timeo + (<span class="number">1</span> &lt;&lt; INET_TWDR_RECYCLE_TICK) - <span class="number">1</span>) &gt;&gt; INET_TWDR_RECYCLE_TICK;</span><br><span class="line"></span><br><span class="line">	spin_lock(&amp;twdr-&gt;death_lock);</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* Unlink it, if it was scheduled */</span></span><br><span class="line">	<span class="keyword">if</span> (inet_twsk_del_dead_node(tw))</span><br><span class="line">		twdr-&gt;tw_count--;</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">		atomic_inc(&amp;tw-&gt;tw_refcnt);</span><br><span class="line">  </span><br><span class="line">  <span class="comment">// 如果所计算的slot大于默认值（1&lt;&lt;5），进入慢timer去处理，其他的进入快timer</span></span><br><span class="line">	<span class="keyword">if</span> (slot &gt;= INET_TWDR_RECYCLE_SLOTS) &#123;</span><br><span class="line">		<span class="comment">/* Schedule to slow timer */</span></span><br><span class="line">		<span class="keyword">if</span> (timeo &gt;= timewait_len) &#123;</span><br><span class="line">			slot = INET_TWDR_TWKILL_SLOTS - <span class="number">1</span>;</span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			slot = DIV_ROUND_UP(timeo, twdr-&gt;period);</span><br><span class="line">			<span class="keyword">if</span> (slot &gt;= INET_TWDR_TWKILL_SLOTS)</span><br><span class="line">				slot = INET_TWDR_TWKILL_SLOTS - <span class="number">1</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		tw-&gt;tw_ttd = inet_tw_time_stamp() + timeo;</span><br><span class="line">		slot = (twdr-&gt;slot + slot) &amp; (INET_TWDR_TWKILL_SLOTS - <span class="number">1</span>);</span><br><span class="line">		<span class="built_in">list</span> = &amp;twdr-&gt;cells[slot];</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		tw-&gt;tw_ttd = inet_tw_time_stamp() + (slot &lt;&lt; INET_TWDR_RECYCLE_TICK);</span><br><span class="line"></span><br><span class="line">		<span class="keyword">if</span> (twdr-&gt;twcal_hand &lt; <span class="number">0</span>) &#123;</span><br><span class="line">			twdr-&gt;twcal_hand = <span class="number">0</span>;</span><br><span class="line">			twdr-&gt;twcal_jiffie = jiffies;</span><br><span class="line">			twdr-&gt;twcal_timer.expires = twdr-&gt;twcal_jiffie +</span><br><span class="line">					      (slot &lt;&lt; INET_TWDR_RECYCLE_TICK);</span><br><span class="line">			add_timer(&amp;twdr-&gt;twcal_timer);</span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			<span class="keyword">if</span> (time_after(twdr-&gt;twcal_timer.expires,</span><br><span class="line">				       jiffies + (slot &lt;&lt; INET_TWDR_RECYCLE_TICK)))</span><br><span class="line">				mod_timer(&amp;twdr-&gt;twcal_timer,</span><br><span class="line">					  jiffies + (slot &lt;&lt; INET_TWDR_RECYCLE_TICK));</span><br><span class="line">			slot = (twdr-&gt;twcal_hand + slot) &amp; (INET_TWDR_RECYCLE_SLOTS - <span class="number">1</span>);</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="built_in">list</span> = &amp;twdr-&gt;twcal_row[slot];</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	hlist_add_head(&amp;tw-&gt;tw_death_node, <span class="built_in">list</span>);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (twdr-&gt;tw_count++ == <span class="number">0</span>)</span><br><span class="line">		mod_timer(&amp;twdr-&gt;tw_timer, jiffies + twdr-&gt;period);</span><br><span class="line">	spin_unlock(&amp;twdr-&gt;death_lock);</span><br><span class="line">&#125;</span><br><span class="line">EXPORT_SYMBOL_GPL(inet_twsk_schedule);</span><br></pre></td></tr></table></figure>
+
+<h2 id="4-1-内核修改了什么"><a href="#4-1-内核修改了什么" class="headerlink" title="4.1+内核修改了什么"></a>4.1+内核修改了什么</h2><p>4.1 的内核，对TIME_WAIT处理逻辑做了改动，具体改动见PR，这里做一下简单翻译。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">tcp&#x2F;dccp：摆脱单独一个time-wait timer</span><br><span class="line"></span><br><span class="line">大约15年前，当时内存昂贵且机器只有一个CPU时，使用timer作为time-wait套接字是不错的选择，</span><br><span class="line">但是这个没法扩展，代码丑陋且延迟极大（经常能看到cpus在death_lock pinlock上达到30ms的自旋）</span><br><span class="line">我们现在可以让每个time-wait sock额外使用64个字节，并将time-wait负载扩展到所有的CPU</span><br><span class="line">来获得更好的性能</span><br><span class="line">测试如下：</span><br><span class="line">下面的测试中, 在server端（lpaa24）&#x2F;proc&#x2F;sys&#x2F;net&#x2F;ipv4&#x2F;tcp_tw_recycle 设为 1</span><br><span class="line"></span><br><span class="line">修改前 :</span><br><span class="line">lpaa23:~# .&#x2F;super_netperf 200 -H lpaa24 -t TCP_CC -l 60 -- -p0,0</span><br><span class="line">419594</span><br><span class="line"></span><br><span class="line">lpaa23:~# .&#x2F;super_netperf 200 -H lpaa24 -t TCP_CC -l 60 -- -p0,0</span><br><span class="line">437171</span><br><span class="line">当测试运行时，可以观察到25到33ms的延迟</span><br><span class="line"></span><br><span class="line">lpaa24:~# ping -c 1000 -i 0.02 -qn lpaa23</span><br><span class="line">...</span><br><span class="line">1000 packets transmitted, 1000 received, 0% packet loss, time 20601ms</span><br><span class="line">rtt min&#x2F;avg&#x2F;max&#x2F;mdev &#x3D; 0.020&#x2F;0.217&#x2F;25.771&#x2F;1.535 ms, pipe 2</span><br><span class="line"></span><br><span class="line">lpaa24:~# ping -c 1000 -i 0.02 -qn lpaa23</span><br><span class="line">...</span><br><span class="line">1000 packets transmitted, 1000 received, 0% packet loss, time 20702ms</span><br><span class="line">rtt min&#x2F;avg&#x2F;max&#x2F;mdev &#x3D; 0.019&#x2F;0.183&#x2F;33.761&#x2F;1.441 ms, pipe 2</span><br><span class="line"></span><br><span class="line">修改后 :</span><br><span class="line">吞吐量提高90% :</span><br><span class="line"></span><br><span class="line">lpaa23:~# .&#x2F;super_netperf 200 -H lpaa24 -t TCP_CC -l 60 -- -p0,0</span><br><span class="line">810442</span><br><span class="line"></span><br><span class="line">lpaa23:~# .&#x2F;super_netperf 200 -H lpaa24 -t TCP_CC -l 60 -- -p0,0</span><br><span class="line">800992</span><br><span class="line"></span><br><span class="line">即时网络利用率提高了90%以上，延迟依旧保持在一个很低的水平上：</span><br><span class="line"></span><br><span class="line">lpaa24:~# ping -c 1000 -i 0.02 -qn lpaa23</span><br><span class="line">...</span><br><span class="line">1000 packets transmitted, 1000 received, 0% packet loss, time 19991ms</span><br><span class="line">rtt min&#x2F;avg&#x2F;max&#x2F;mdev &#x3D; 0.023&#x2F;0.064&#x2F;0.360&#x2F;0.042 ms</span><br></pre></td></tr></table></figure>
+
+<p>commit：<a href="https://github.com/torvalds/linux/commit/789f558cfb3680aeb52de137418637f6b04b7d22" target="_blank" rel="noopener">789f558cfb3680aeb52de137418637f6b04b7d22</a></p>
+<p>link：<a href="https://lxr.missinglinkelectronics.com/linux+v4.1/net/ipv4/inet_timewait_sock.c" target="_blank" rel="noopener">v4.1/net/ipv4/inet_timewait_sock.c</a></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">inet_twsk_schedule</span><span class="params">(struct inet_timewait_sock *tw, <span class="keyword">const</span> <span class="keyword">int</span> timeo)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	tw-&gt;tw_kill = timeo &lt;= <span class="number">4</span>*HZ;</span><br><span class="line">	<span class="keyword">if</span> (!mod_timer_pinned(&amp;tw-&gt;tw_timer, jiffies + timeo)) &#123;</span><br><span class="line">		atomic_inc(&amp;tw-&gt;tw_refcnt);</span><br><span class="line">		atomic_inc(&amp;tw-&gt;tw_dr-&gt;tw_count);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line">EXPORT_SYMBOL_GPL(inet_twsk_schedule);</span><br></pre></td></tr></table></figure>
+
+<p>然后在4.3对上面的PR又做了修订 ，详细见PR。做下简单翻译：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">当创建一个timewait socket时，我们需要在允许其他CPU找到它之前配置计时器。</span><br><span class="line">允许cpus查找socket的信号将tw_refcnt设置为非零值</span><br><span class="line"></span><br><span class="line">我们需要先调用inet_twsk_schedule(),才能在 __inet_twsk_hashdance()中设置tw_refcnt值</span><br><span class="line"></span><br><span class="line">这也意味着我们需要从inet_twsk_schedule()中删除tw_refcnt的更改，然后由调用方处理。</span><br><span class="line"></span><br><span class="line">请注意，由于我们使用了mod_timer_pinned()，因此可以保证在BH上下文中运行时设置tw_refcnt之前，</span><br><span class="line">计时器不会过期。</span><br><span class="line"></span><br><span class="line">为了使内容更具可读性，我引入了inet_twsk_reschedule() helper。</span><br><span class="line"></span><br><span class="line">重新设置计时器时，可以使用mod_timer_pending()来确保不需要重新设置已取消的计时器。</span><br><span class="line"></span><br><span class="line">注意：如果流的数据包能击中多个cpus，则可能会触发此错误。 除非以某种方式破坏了流量控制，</span><br><span class="line">否则通常不会发生这种情况。 大概修改<span class="number">5</span>个月后发现了这个错误。</span><br><span class="line"></span><br><span class="line">reqsk_queue_hash_req()中的SYN_RECV socket需要类似的修复程序，但将在单独的修补程序中提</span><br><span class="line">供该修复程序以进行正确的跟踪。</span><br></pre></td></tr></table></figure>
+
+<p>commit：<a href="https://github.com/torvalds/linux/commit/ed2e923945892a8372ab70d2f61d364b0b6d9054" target="_blank" rel="noopener">ed2e923945892a8372ab70d2f61d364b0b6d9054</a></p>
+<p>link：<a href="https://lxr.missinglinkelectronics.com/linux+v4.3/net/ipv4/inet_timewait_sock.c#L222" target="_blank" rel="noopener">v4.3/net/ipv4/inet_timewait_sock.c#L222</a></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> __inet_twsk_schedule(struct inet_timewait_sock *tw, <span class="keyword">int</span> timeo, <span class="keyword">bool</span> rearm)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">if</span> (!rearm) &#123;</span><br><span class="line">			BUG_ON(mod_timer_pinned(&amp;tw-&gt;tw_timer, jiffies + timeo));</span><br><span class="line"> 			atomic_inc(&amp;tw-&gt;tw_dr-&gt;tw_count);</span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			mod_timer_pending(&amp;tw-&gt;tw_timer, jiffies + timeo);</span><br><span class="line"> 		&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>简单来说，就是CPU利用率提升，吞吐量提高。推荐使用4.3+内核</p>
+<h2 id="几个常见参数介绍"><a href="#几个常见参数介绍" class="headerlink" title="几个常见参数介绍"></a>几个常见参数介绍</h2><h3 id="net-ipv4-tcp-tw-reuse"><a href="#net-ipv4-tcp-tw-reuse" class="headerlink" title="net.ipv4.tcp_tw_reuse"></a>net.ipv4.tcp_tw_reuse</h3><p>重用 TIME_WAIT 连接的条件：</p>
+<ul>
+<li>设置了 tcp_timestamps = 1，即开启状态。</li>
+<li>设置了 tcp_tw_reuse = 1，即开启状态。</li>
+<li>新连接的 timestamp 大于 之前连接的 timestamp 。</li>
+<li>在处于 TIME_WAIT 状态并且持续 1 秒之后。<code>get_seconds() - tcptw-&gt;tw_ts_recent_stamp &gt; 1</code> 。</li>
+</ul>
+<p>重用的连接类型：仅仅只是 Outbound (Outgoing) connection ，对于 Inbound connection 不会重用。</p>
+<p>安全指的是什么：</p>
+<ul>
+<li>TIME_WAIT 可以避免重复发送的数据包被后续的连接错误的接收，由于 timestamp 机制的存在，重复的数据包会直接丢弃掉。</li>
+<li>TIME_WAIT 能够确保被动连接的一方，不会由于主动连接的一方发送的最后一个 ACK 数据包丢失（比如网络延迟导致的丢包）之后，一直停留在 LAST_ACK 状态，导致被动关闭方无法正确地关闭连接。为了确保这一机制，主动关闭的一方会一直重传（ retransmit ） FIN 数据包。</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">tcp_twsk_unique</span><span class="params">(struct sock *sk, struct sock *sktw, <span class="keyword">void</span> *twp)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">tcp_timewait_sock</span> *<span class="title">tcptw</span> = <span class="title">tcp_twsk</span>(<span class="title">sktw</span>);</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">tcp_sock</span> *<span class="title">tp</span> = <span class="title">tcp_sk</span>(<span class="title">sk</span>);</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">/* With PAWS, it is safe from the viewpoint</span></span><br><span class="line"><span class="comment">	   of data integrity. Even without PAWS it is safe provided sequence</span></span><br><span class="line"><span class="comment">	   spaces do not overlap i.e. at data rates &lt;= 80Mbit/sec.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">	   Actually, the idea is close to VJ's one, only timestamp cache is</span></span><br><span class="line"><span class="comment">	   held not per host, but per port pair and TW bucket is used as state</span></span><br><span class="line"><span class="comment">	   holder.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">	   If TW bucket has been already destroyed we fall back to VJ's scheme</span></span><br><span class="line"><span class="comment">	   and use initial timestamp retrieved from peer table.</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">    <span class="comment">// 需要开启时间戳扩展</span></span><br><span class="line">	<span class="keyword">if</span> (tcptw-&gt;tw_ts_recent_stamp &amp;&amp;</span><br><span class="line">	    (twp == <span class="literal">NULL</span> || (sysctl_tcp_tw_reuse &amp;&amp;</span><br><span class="line">			     get_seconds() - tcptw-&gt;tw_ts_recent_stamp &gt; <span class="number">1</span>))) &#123;</span><br><span class="line">		tp-&gt;write_seq = tcptw-&gt;tw_snd_nxt + <span class="number">65535</span> + <span class="number">2</span>;</span><br><span class="line">		<span class="keyword">if</span> (tp-&gt;write_seq == <span class="number">0</span>)</span><br><span class="line">			tp-&gt;write_seq = <span class="number">1</span>;</span><br><span class="line">		tp-&gt;rx_opt.ts_recent	   = tcptw-&gt;tw_ts_recent;</span><br><span class="line">		tp-&gt;rx_opt.ts_recent_stamp = tcptw-&gt;tw_ts_recent_stamp;</span><br><span class="line">		sock_hold(sktw);</span><br><span class="line">		<span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line">EXPORT_SYMBOL_GPL(tcp_twsk_unique);</span><br></pre></td></tr></table></figure>
+
+<h3 id="net-ipv4-tcp-tw-recycle"><a href="#net-ipv4-tcp-tw-recycle" class="headerlink" title="net.ipv4.tcp_tw_recycle"></a>net.ipv4.tcp_tw_recycle</h3><p>详见上面处理<strong>time-wait</strong>一节的分析</p>
+<p>不建议开启 tw_recycle 配置。事实上，在 linux 内核 4.12 版本，已经去掉了 net.ipv4.tcp_tw_recycle 参数了，参考<a href="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=4396e46187ca5070219b81773c4e65088dac50cc" target="_blank" rel="noopener">commit</a></p>
+<h3 id="tcp-max-tw-buckets"><a href="#tcp-max-tw-buckets" class="headerlink" title="tcp_max_tw_buckets"></a>tcp_max_tw_buckets</h3><p>设置 TIME_WAIT 最大数量。目的为了阻止一些简单的DoS攻击，平常不要人为的降低它。如果缩小了它，那么系统会将多余的TIME_WAIT删除掉，日志里会显示：「TCP: time wait bucket table overflow」。</p>
+<h1 id="如何设置正确的值"><a href="#如何设置正确的值" class="headerlink" title="如何设置正确的值"></a>如何设置正确的值</h1><blockquote>
+<p>定时器精度相关分析请看参考[3]</p>
+</blockquote>
+<h2 id="4-1内核"><a href="#4-1内核" class="headerlink" title="4.1内核"></a>4.1内核</h2><ol>
+<li>tcp_fin_timeout &lt;= 3, FIN_WAIT_2 状态超时时间为 tcp_fin_timeout 值。</li>
+<li>3&lt;tcp_fin_timeout &lt;=60, FIN_WAIT_2状态超时时间为 tcp_fin_timeout值+定时器精度（以7秒为单位）误差时间。</li>
+<li>tcp_fin_timeout &gt; 60, FIN_WAIT_2状态会先经历keepalive状态，持续时间为tmo=tcp_fin_timeout-60值, 再经历timewait状态，持续时间为 (tcp_fin_timeout -60)+定时器精度，这里的定时器精度根据(tcp_fin_timeout -60)的计算值，会最终落在上述两个精度范围（1/8秒为单位或7秒为单位）。</li>
+</ol>
+<h2 id="4-3-内核"><a href="#4-3-内核" class="headerlink" title="4.3+内核"></a>4.3+内核</h2><ol>
+<li>tcp_fin_timeout &lt;=60, FIN_WAIT_2 状态超时时间为 tcp_fin_timeout 值。</li>
+<li>tcp_fin_timeout &gt; 60, FIN_WAIT_2 状态会先经历 keepalive 状态，持续时间为 tmo=tcp_fin_timeout-60 值 , 再经历 timewait 状态，持续时间同样为 tmo= tcp_fin_timeout-60 值。</li>
+</ol>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><p>[1] Linux TCP Finwait2/Timewait状态要义浅析，<a href="https://blog.csdn.net/dog250/article/details/81582604" target="_blank" rel="noopener">https://blog.csdn.net/dog250/article/details/81582604</a></p>
+<p>[2] TCP的TIME_WAIT快速回收与重用，<a href="https://blog.csdn.net/dog250/article/details/13760985" target="_blank" rel="noopener">https://blog.csdn.net/dog250/article/details/13760985</a></p>
+<p>[3] 由优化FIN_WAIT_2状态超时引入的关于tcp_fin_timeout参数研究，<a href="https://www.talkwithtrend.com/Article/251641" target="_blank" rel="noopener">https://www.talkwithtrend.com/Article/251641</a></p>
+<p>[4] TCP TIME_WAIT 详解，<a href="https://www.zhuxiaodong.net/2018/tcp-time-wait-instruction/" target="_blank" rel="noopener">https://www.zhuxiaodong.net/2018/tcp-time-wait-instruction/</a></p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      <div>
+        <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+  <div>Buy Me A Coffee.</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>打赏</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/images/wechatpay.png" alt="Gsealy 微信支付"/>
+        <p>微信支付</p>
+      </div>
+    
+
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+      <div>
+        <ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>Gsealy</li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://gsealy.net/posts/4c6f1fcd/" title="Linux处理TIME_WAIT和FIN_WAIT_2状态">https://gsealy.net/posts/4c6f1fcd/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明出处！</li>
+</ul>
+
+      </div>
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Linux/" rel="tag"># Linux</a>
+          
+            <a href="/tags/TCP/" rel="tag"># TCP</a>
+          
+        </div>
+      
+
+      
+      
+        <div class="post-widgets">
+        
+
+        
+
+        
+          
+          <div class="social_share">
+            
+               <div>
+                 
+  <div class="bdsharebuttonbox">
+    <a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a>
+    <a href="#" class="bds_douban" data-cmd="douban" title="分享到豆瓣网"></a>
+    <a href="#" class="bds_sqq" data-cmd="sqq" title="分享到QQ好友"></a>
+    <a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a>
+    <a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a>
+    <a href="#" class="bds_tieba" data-cmd="tieba" title="分享到百度贴吧"></a>
+    <a href="#" class="bds_twi" data-cmd="twi" title="分享到Twitter"></a>
+    <a href="#" class="bds_fbook" data-cmd="fbook" title="分享到Facebook"></a>
+    <a href="#" class="bds_more" data-cmd="more"></a>
+    <a class="bds_count" data-cmd="count"></a>
+  </div>
+  <script>
+    window._bd_share_config = {
+      "common": {
+        "bdText": "",
+        "bdMini": "2",
+        "bdMiniList": false,
+        "bdPic": ""
+      },
+      "share": {
+        "bdSize": "16",
+        "bdStyle": "0"
+      },
+      "image": {
+        "viewList": ["tsina", "douban", "sqq", "qzone", "weixin", "twi", "fbook"],
+        "viewText": "分享到：",
+        "viewSize": "16"
+      }
+    }
+  </script>
+
+<script>
+  with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];
+</script>
+
+               </div>
+            
+            
+          </div>
+        
+        </div>
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/posts/b6e0f891/" rel="next" title="[译]容器带给DevSecOps的重大挑战">
+                <i class="fa fa-chevron-left"></i> [译]容器带给DevSecOps的重大挑战
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/posts/c11d6eb2/" rel="prev" title="“魔铲”挖矿木马清理">
+                “魔铲”挖矿木马清理 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="/images/avatar.jpg"
+                alt="Gsealy" />
+            
+              <p class="site-author-name" itemprop="name">Gsealy</p>
+              <p class="site-description motion-element" itemprop="description">Stay hungry. Stay foolish.</p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/%20%7C%7C%20archive">
+                
+                    <span class="site-state-item-count">40</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">57</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  <a href="https://github.com/Gsealy" target="_blank" title="GitHub"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                  
+                </span>
+              
+                <span class="links-of-author-item">
+                  <a href="mailto:gsealy@outlook.com" target="_blank" title="E-Mail"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                  
+                </span>
+              
+            </div>
+          
+
+          
+          
+            <div class="cc-license motion-element" itemprop="license">
+              <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" target="_blank">
+                <img src="/images/cc-by-nc-sa.svg" alt="Creative Commons" />
+              </a>
+            </div>
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#TL；DR"><span class="nav-number">1.</span> <span class="nav-text">TL；DR</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#源码解析"><span class="nav-number">2.</span> <span class="nav-text">源码解析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#入口"><span class="nav-number">2.0.1.</span> <span class="nav-text">入口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#处理time-wait"><span class="nav-number">2.0.2.</span> <span class="nav-text">处理time-wait</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#time-wait轮询处理"><span class="nav-number">2.0.3.</span> <span class="nav-text">time-wait轮询处理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-1-内核修改了什么"><span class="nav-number">2.1.</span> <span class="nav-text">4.1+内核修改了什么</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#几个常见参数介绍"><span class="nav-number">2.2.</span> <span class="nav-text">几个常见参数介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#net-ipv4-tcp-tw-reuse"><span class="nav-number">2.2.1.</span> <span class="nav-text">net.ipv4.tcp_tw_reuse</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#net-ipv4-tcp-tw-recycle"><span class="nav-number">2.2.2.</span> <span class="nav-text">net.ipv4.tcp_tw_recycle</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#tcp-max-tw-buckets"><span class="nav-number">2.2.3.</span> <span class="nav-text">tcp_max_tw_buckets</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#如何设置正确的值"><span class="nav-number">3.</span> <span class="nav-text">如何设置正确的值</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#4-1内核"><span class="nav-number">3.1.</span> <span class="nav-text">4.1内核</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-3-内核"><span class="nav-number">3.2.</span> <span class="nav-text">4.3+内核</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考"><span class="nav-number">4.</span> <span class="nav-text">参考</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+        <div class="back-to-top">
+          <i class="fa fa-arrow-up"></i>
+          
+            <span id="scrollpercent"><span>0</span>%</span>
+          
+        </div>
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2022</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Gsealy</span>
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    
+    <span title="站点总字数">169k</span>
+  
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    
+    <span title="站点阅读时长">2:34</span>
+  
+</div>
+
+
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动 v4.2.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a class="theme-link" target="_blank" href="https://theme-next.org">NexT.Gemini</a> v6.4.1</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.4.1"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.4.1"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.4.1"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.4.1"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.4.1"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.4.1"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.4.1"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  
+  
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(function (item) {
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: '5aBLvdhqaRMbqifdf8wbpRVh-gzGzoHsz',
+        appKey: 's0c3WPbvWcpddeKLTJdFFgC7',
+        placeholder: 'say something...',
+        avatar:'mm',
+        meta:guest,
+        pageSize:'10' || 10,
+        visitor: false
+    });
+  </script>
+
+
+
+  
+
+  <script type="text/javascript">
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url);
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+  <script>
+    
+    function addCount(Counter) {
+      var $visitors = $(".leancloud_visitors");
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+
+      Counter('get', '/classes/Counter', { where: JSON.stringify({ url }) })
+        .done(function ({ results }) {
+          if (results.length > 0) {
+            var counter = results[0];
+            
+              var $element = $(document.getElementById(url));
+              $element.find('.leancloud-visitors-count').text(counter.time + 1);
+            
+            Counter('put', `/classes/Counter/${counter.objectId}`, JSON.stringify({ time: { "__op":"Increment", "amount":1 } }))
+            
+            .fail(function ({ responseJSON }) {
+                console.log('Failed to save Visitor num, with error message: ' + responseJSON.error);
+            })
+          } else {
+            
+              Counter('post', '/classes/Counter', JSON.stringify({ title: title, url: url, time: 1}))
+                .done(function () {
+                  var $element = $(document.getElementById(url));
+                  $element.find('.leancloud-visitors-count').text(1);
+                })
+                .fail(function () {
+                  console.log('Failed to create');
+                });
+            
+          }
+        })
+      .fail(function ({ responseJSON }) {
+        console.log('LeanCloud Counter Error:' + responseJSON.code + " " + responseJSON.error);
+      });
+    }
+    
+
+    $(function() {
+      $.get('https://app-router.leancloud.cn/2/route?appId=' + "5aBLvdhqaRMbqifdf8wbpRVh-gzGzoHsz")
+        .done(function ({ api_server }) {
+          var Counter = function (method, url, data) {
+            return $.ajax({
+              method: method,
+              url: `https://${api_server}/1.1${url}`,
+              headers: {
+                'X-LC-Id': "5aBLvdhqaRMbqifdf8wbpRVh-gzGzoHsz",
+                'X-LC-Key': "s0c3WPbvWcpddeKLTJdFFgC7",
+                'Content-Type': 'application/json',
+              },
+              data: data,
+            });
+          };
+          
+          addCount(Counter);
+          
+        })
+    });
+  </script>
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+  <script type="text/javascript" src="/js/src/js.cookie.js?v=6.4.1"></script>
+  <script type="text/javascript" src="/js/src/scroll-cookie.js?v=6.4.1"></script>
+
+
+  
+
+  
+
+  
+
+</body>
+</html>

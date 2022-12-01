@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=6.4.1" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.4.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-shin.ico?v=6.4.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-shin.ico?v=6.4.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.4.1" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '6.4.1',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":true,"scrollpercent":true,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="看说OpenJ9的内存占用相较于Hotspot要低，对比文章。所以打算在本地打一个镜像试试。 其实AdoptOpenJDK提供的有OpenJ9的镜像，链接在此。因为需要做一些修改，所以直接用Dockerfile本地构建了。同时也分享一下是如何在服务器无法连接代理的情况下使用AdoptOpenJDK镜像脚本构建镜像。 前期准备参考的构建脚本是AdoptOpenJDK的openjdk-docker项目">
+<meta property="og:type" content="article">
+<meta property="og:title" content="本地构建基于Alpine的OpenJ9 OpenJDK11及精简JDK的制作">
+<meta property="og:url" content="https://gsealy.net/posts/147e3088/index.html">
+<meta property="og:site_name" content="Gsealy">
+<meta property="og:description" content="看说OpenJ9的内存占用相较于Hotspot要低，对比文章。所以打算在本地打一个镜像试试。 其实AdoptOpenJDK提供的有OpenJ9的镜像，链接在此。因为需要做一些修改，所以直接用Dockerfile本地构建了。同时也分享一下是如何在服务器无法连接代理的情况下使用AdoptOpenJDK镜像脚本构建镜像。 前期准备参考的构建脚本是AdoptOpenJDK的openjdk-docker项目">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/docker/hotspot-mem-use.png">
+<meta property="og:image" content="https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/docker/openj9-mem-use.png">
+<meta property="article:published_time" content="2020-05-08T08:20:16.000Z">
+<meta property="article:modified_time" content="2022-12-01T01:15:59.250Z">
+<meta property="article:author" content="Gsealy">
+<meta property="article:tag" content="Docker">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="OpenJ9">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/docker/hotspot-mem-use.png">
+
+
+
+
+
+
+  <link rel="canonical" href="https://gsealy.net/posts/147e3088/"/>
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>本地构建基于Alpine的OpenJ9 OpenJDK11及精简JDK的制作 | Gsealy</title>
+  
+
+
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-126611823-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-126611823-1');
+</script>
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Gsealy</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+    <a href="/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-home"></i> <br />首页</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+    <a href="/about/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-user"></i> <br />关于</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+    <a href="/tags/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />标签</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+    <a href="/categories/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-th"></i> <br />分类</a>
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+    <a href="/archives/" rel="section">
+      <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />归档</a>
+  </li>
+
+      
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />搜索</a>
+        </li>
+      
+    </ul>
+  
+
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off"
+             placeholder="搜索..." spellcheck="false"
+             type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://gsealy.net/posts/147e3088/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Gsealy">
+      <meta itemprop="description" content="Stay hungry. Stay foolish.">
+      <meta itemprop="image" content="/images/avatar.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Gsealy">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">本地构建基于Alpine的OpenJ9 OpenJDK11及精简JDK的制作
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2020-05-08 16:20:16" itemprop="dateCreated datePublished" datetime="2020-05-08T16:20:16+08:00">2020-05-08</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2022-12-01 09:15:59" itemprop="dateModified" datetime="2022-12-01T09:15:59+08:00">2022-12-01</time>
+              
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/posts/147e3088/#comments" itemprop="discussionUrl">
+                  <span class="post-meta-item-text">评论数：</span> <span class="post-comments-count valine-comment-count" data-xid="/posts/147e3088/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+             <span id="/posts/147e3088/" class="leancloud_visitors" data-flag-title="本地构建基于Alpine的OpenJ9 OpenJDK11及精简JDK的制作">
+               <span class="post-meta-divider">|</span>
+               <span class="post-meta-item-icon">
+                 <i class="fa fa-eye"></i>
+               </span>
+               
+                 <span class="post-meta-item-text">阅读次数：</span>
+               
+                 <span class="leancloud-visitors-count"></span>
+             </span>
+          
+
+          
+
+          
+            <div class="post-symbolscount">
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">本文字数：</span>
+                
+                <span title="本文字数">48k</span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">44 分钟</span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>看说OpenJ9的内存占用相较于Hotspot要低，<a href="https://billykorando.com/2019/05/03/5-reasons-why-you-should-consider-switching-to-eclipse-openj9/" target="_blank" rel="noopener">对比文章</a>。所以打算在本地打一个镜像试试。</p>
+<p>其实AdoptOpenJDK提供的有OpenJ9的镜像，<a href="https://hub.docker.com/r/adoptopenjdk/openjdk11-openj9" target="_blank" rel="noopener">链接在此</a>。因为需要做一些修改，所以直接用Dockerfile本地构建了。同时也分享一下是如何在服务器无法连接代理的情况下使用AdoptOpenJDK镜像脚本构建镜像。</p>
+<h1 id="前期准备"><a href="#前期准备" class="headerlink" title="前期准备"></a>前期准备</h1><p>参考的构建脚本是AdoptOpenJDK的openjdk-docker项目，具体<a href="https://github.com/AdoptOpenJDK/openjdk-docker/blob/master/11/jre/alpine/Dockerfile.openj9.releases.full" target="_blank" rel="noopener">链接</a>。具体内容就不放这里了，直接去链接里面看就好了。</p>
+<ol>
+<li><p>为什么构建脚本那么长</p>
+<p>OpenJ9现在基于Alpine的好像只能用glibc库，但是Alpine官方用的是musl-libc，所以脚本中很大一部分都是在安装glibc，具体可以看：<a href="https://serverfault.com/a/960783" target="_blank" rel="noopener">Installing openjdk 11 on alpine:3.9</a></p>
+</li>
+<li><p>国内访问问题</p>
+<p>脚本中有很多的curl操作，而且地址对应的是github和archlinux，github用的AWS云存储，国内无法直连，archlinux的archive直连下载只有20kb左右，我搜了下国内的镜像站点都没有收录，所以直接在服务器上构建不可取，需要稍微修改下。</p>
+</li>
+</ol>
+<h2 id="修改脚本"><a href="#修改脚本" class="headerlink" title="修改脚本"></a>修改脚本</h2><ol>
+<li><p>下载文件</p>
+<p>先在本地通过代理将所需文件下载至本地，本地搭建一个文件服务器供服务器使用（我这里所用的服务器和工作机是相同网段）。下面也给出了所需的文件，都放在天翼云上了， 国内下载应该是满速。</p>
+<p>本地依赖下载：<a href="https://cloud.189.cn/web/share?code=Yn6Fju7Vb2qq" target="_blank" rel="noopener">天翼云盘</a>（访问码：rbp5）</p>
+</li>
+<li><p>搭建文件服务器</p>
+<p>文件服务器很简单，有一个基于Chrome的插件可以直接开启服务。<a href="https://chrome.google.com/webstore/detail/web-server-for-chrome/ofhbbkphhbklhfoeikjpcbhemlocgigb" target="_blank" rel="noopener">Web Server for Chrome</a></p>
+<p>操作很简单，选择文件目录，开启服务就好了，确保服务器能够正常访问即可。</p>
+</li>
+<li><p>修改URL</p>
+<p>在上下两个<code>RUN</code>语法糖中都加入<code>URL_PREFIX=&quot;http://10.20.61.27:8887&quot;</code>（完整Dockerfile见最后），修改所有出现的URL就可以了！别忘记添加Alpine CDN的国内镜像源。</p>
+</li>
+</ol>
+<h1 id="构建JDK"><a href="#构建JDK" class="headerlink" title="构建JDK"></a>构建JDK</h1><p>脚本修改好之后，直接在服务端构建即可。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker build . -t openjdk:11.0-openj9</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br></pre></td><td class="code"><pre><span class="line">Sending build context to Docker daemon  503.8kB</span><br><span class="line">Step 1/9 : FROM alpine:3.11</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> f70734b6a266</span></span><br><span class="line">Step 2/9 : MAINTAINER Gsealy &lt;jiaojingwei@infosec.com.cn&gt;</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> Running <span class="keyword">in</span> 8750fff47cb4</span></span><br><span class="line">Removing intermediate container 8750fff47cb4</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> 2b9b4628a331</span></span><br><span class="line">Step 3/9 : ENV LANG="zh_CN.UTF-8" LC_ALL="zh_CN.UTF-8"</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> Running <span class="keyword">in</span> 370ad5d94d09</span></span><br><span class="line">Removing intermediate container 370ad5d94d09</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> 5384261f7b05</span></span><br><span class="line">Step 4/9 : RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories     &amp;&amp; apk add --no-cache --virtual .build-deps curl binutils     &amp;&amp; GLIBC_VER="2.31-r0"     &amp;&amp; URL_PREFIX="http://10.20.61.27:8887"     &amp;&amp; GCC_LIBS_URL="$&#123;URL_PREFIX&#125;/gcc-libs-9.1.0-2-x86_64.pkg.tar.xz"     &amp;&amp; ZLIB_URL="$&#123;URL_PREFIX&#125;/zlib-1_1.2.11-3-x86_64.pkg.tar.xz"     &amp;&amp; curl -LfsS $&#123;URL_PREFIX&#125;/sgerrand.rsa.pub -o /etc/apk/keys/sgerrand.rsa.pub     &amp;&amp; curl -LfsS $&#123;URL_PREFIX&#125;/glibc-$&#123;GLIBC_VER&#125;.apk &gt; /tmp/glibc-$&#123;GLIBC_VER&#125;.apk     &amp;&amp; apk add --no-cache /tmp/glibc-$&#123;GLIBC_VER&#125;.apk     &amp;&amp; curl -LfsS $&#123;URL_PREFIX&#125;/glibc-bin-$&#123;GLIBC_VER&#125;.apk &gt; /tmp/glibc-bin-$&#123;GLIBC_VER&#125;.apk     &amp;&amp; apk add --no-cache /tmp/glibc-bin-$&#123;GLIBC_VER&#125;.apk     &amp;&amp; curl -Ls $&#123;URL_PREFIX&#125;/glibc-i18n-$&#123;GLIBC_VER&#125;.apk &gt; /tmp/glibc-i18n-$&#123;GLIBC_VER&#125;.apk     &amp;&amp; apk add --no-cache /tmp/glibc-i18n-$&#123;GLIBC_VER&#125;.apk     &amp;&amp; /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 "$LANG" || true     &amp;&amp; echo "export LANG=$LANG" &gt; /etc/profile.d/locale.sh     &amp;&amp; curl -LfsS $&#123;GCC_LIBS_URL&#125; -o /tmp/gcc-libs.tar.xz     &amp;&amp; mkdir /tmp/gcc     &amp;&amp; tar -xf /tmp/gcc-libs.tar.xz -C /tmp/gcc     &amp;&amp; mv /tmp/gcc/usr/lib/libgcc* /tmp/gcc/usr/lib/libstdc++* /usr/glibc-compat/lib     &amp;&amp; strip /usr/glibc-compat/lib/libgcc_s.so.* /usr/glibc-compat/lib/libstdc++.so*     &amp;&amp; curl -LfsS $&#123;ZLIB_URL&#125; -o /tmp/libz.tar.xz     &amp;&amp; mkdir /tmp/libz     &amp;&amp; tar -xf /tmp/libz.tar.xz -C /tmp/libz     &amp;&amp; mv /tmp/libz/usr/lib/libz.so* /usr/glibc-compat/lib     &amp;&amp; apk del --purge .build-deps glibc-i18n     &amp;&amp; rm -rf /tmp/*.apk /tmp/gcc /tmp/gcc-libs.tar.xz /tmp/libz /tmp/libz.tar.xz /var/cache/apk/*</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> Running <span class="keyword">in</span> f702ac6a4a05</span></span><br><span class="line">fetch http://mirrors.ustc.edu.cn/alpine/v3.11/main/x86_64/APKINDEX.tar.gz</span><br><span class="line">fetch http://mirrors.ustc.edu.cn/alpine/v3.11/community/x86_64/APKINDEX.tar.gz</span><br><span class="line">(1/8) Installing ca-certificates (20191127-r1)</span><br><span class="line">(2/8) Installing nghttp2-libs (1.40.0-r0)</span><br><span class="line">(3/8) Installing libcurl (7.67.0-r0)</span><br><span class="line">(4/8) Installing curl (7.67.0-r0)</span><br><span class="line">(5/8) Installing libgcc (9.2.0-r4)</span><br><span class="line">(6/8) Installing libstdc++ (9.2.0-r4)</span><br><span class="line">(7/8) Installing binutils (2.33.1-r0)</span><br><span class="line">(8/8) Installing .build-deps (20200509.020904)</span><br><span class="line">Executing busybox-1.31.1-r9.trigger</span><br><span class="line">Executing ca-certificates-20191127-r1.trigger</span><br><span class="line">OK: 18 MiB in 22 packages</span><br><span class="line">fetch http://mirrors.ustc.edu.cn/alpine/v3.11/main/x86_64/APKINDEX.tar.gz</span><br><span class="line">fetch http://mirrors.ustc.edu.cn/alpine/v3.11/community/x86_64/APKINDEX.tar.gz</span><br><span class="line">(1/1) Installing glibc (2.31-r0)</span><br><span class="line">OK: 27 MiB in 23 packages</span><br><span class="line">fetch http://mirrors.ustc.edu.cn/alpine/v3.11/main/x86_64/APKINDEX.tar.gz</span><br><span class="line">fetch http://mirrors.ustc.edu.cn/alpine/v3.11/community/x86_64/APKINDEX.tar.gz</span><br><span class="line">(1/1) Installing glibc-bin (2.31-r0)</span><br><span class="line">Executing glibc-bin-2.31-r0.trigger</span><br><span class="line">/usr/glibc-compat/sbin/ldconfig: /usr/glibc-compat/lib/ld-linux-x86-64.so.2 is not a symbolic link</span><br><span class="line"></span><br><span class="line">OK: 30 MiB in 24 packages</span><br><span class="line">fetch http://mirrors.ustc.edu.cn/alpine/v3.11/main/x86_64/APKINDEX.tar.gz</span><br><span class="line">fetch http://mirrors.ustc.edu.cn/alpine/v3.11/community/x86_64/APKINDEX.tar.gz</span><br><span class="line">(1/1) Installing glibc-i18n (2.31-r0)</span><br><span class="line">OK: 55 MiB in 25 packages</span><br><span class="line">failed to set locale!</span><br><span class="line">[warning] No definition for LC_PAPER category found</span><br><span class="line">failed to set locale!</span><br><span class="line">[warning] No definition for LC_NAME category found</span><br><span class="line">failed to set locale!</span><br><span class="line">[warning] No definition for LC_ADDRESS category found</span><br><span class="line">failed to set locale!</span><br><span class="line">[warning] No definition for LC_TELEPHONE category found</span><br><span class="line">failed to set locale!</span><br><span class="line">[warning] No definition for LC_MEASUREMENT category found</span><br><span class="line">failed to set locale!</span><br><span class="line">[warning] No definition for LC_IDENTIFICATION category found</span><br><span class="line">WARNING: Ignoring APKINDEX.5f57d7a5.tar.gz: No such file or directory</span><br><span class="line">WARNING: Ignoring APKINDEX.e1c8646f.tar.gz: No such file or directory</span><br><span class="line">(1/8) Purging .build-deps (20200509.020904)</span><br><span class="line">(2/8) Purging curl (7.67.0-r0)</span><br><span class="line">(3/8) Purging binutils (2.33.1-r0)</span><br><span class="line">(4/8) Purging glibc-i18n (2.31-r0)</span><br><span class="line">(5/8) Purging libcurl (7.67.0-r0)</span><br><span class="line">(6/8) Purging ca-certificates (20191127-r1)</span><br><span class="line">Executing ca-certificates-20191127-r1.post-deinstall</span><br><span class="line">(7/8) Purging nghttp2-libs (1.40.0-r0)</span><br><span class="line">(8/8) Purging libstdc++ (9.2.0-r4)</span><br><span class="line">Executing busybox-1.31.1-r9.trigger</span><br><span class="line">Executing glibc-bin-2.31-r0.trigger</span><br><span class="line">/usr/glibc-compat/sbin/ldconfig: /usr/glibc-compat/lib/ld-linux-x86-64.so.2 is not a symbolic link</span><br><span class="line"></span><br><span class="line">OK: 17 MiB in 17 packages</span><br><span class="line">Removing intermediate container f702ac6a4a05</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> 06ea75045e4f</span></span><br><span class="line">Step 5/9 : ENV JAVA_VERSION jdk-11.0.7+10_openj9-0.20.0</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> Running <span class="keyword">in</span> 1b52218826fb</span></span><br><span class="line">Removing intermediate container 1b52218826fb</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> 10ac97e30305</span></span><br><span class="line">Step 6/9 : RUN set -eux;     sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories;     URL_PREFIX="http://10.20.61.27:8887";     apk add --no-cache --virtual .fetch-deps curl;     curl -LfsSo /tmp/openjdk.tar.gz $&#123;URL_PREFIX&#125;/OpenJDK11U-jdk_x64_linux_openj9_11.0.7_10_openj9-0.20.0.tar.gz ;     mkdir -p /opt/java/openjdk;     cd /opt/java/openjdk;     tar -xf /tmp/openjdk.tar.gz --strip-components=1;     apk del --purge .fetch-deps;     rm -rf /var/cache/apk/*;     rm -rf /tmp/openjdk.tar.gz;</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> Running <span class="keyword">in</span> 5a861f325886</span></span><br><span class="line">+ sed -i s/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g /etc/apk/repositories</span><br><span class="line">+ URL_PREFIX=http://10.20.61.27:8887</span><br><span class="line">+ apk add --no-cache --virtual .fetch-deps curl</span><br><span class="line">fetch http://mirrors.ustc.edu.cn/alpine/v3.11/main/x86_64/APKINDEX.tar.gz</span><br><span class="line">fetch http://mirrors.ustc.edu.cn/alpine/v3.11/community/x86_64/APKINDEX.tar.gz</span><br><span class="line">(1/5) Installing ca-certificates (20191127-r1)</span><br><span class="line">(2/5) Installing nghttp2-libs (1.40.0-r0)</span><br><span class="line">(3/5) Installing libcurl (7.67.0-r0)</span><br><span class="line">(4/5) Installing curl (7.67.0-r0)</span><br><span class="line">(5/5) Installing .fetch-deps (20200509.020918)</span><br><span class="line">Executing busybox-1.31.1-r9.trigger</span><br><span class="line">Executing ca-certificates-20191127-r1.trigger</span><br><span class="line">Executing glibc-bin-2.31-r0.trigger</span><br><span class="line">/usr/glibc-compat/sbin/ldconfig: /usr/glibc-compat/lib/ld-linux-x86-64.so.2 is not a symbolic link</span><br><span class="line"></span><br><span class="line">OK: 18 MiB in 22 packages</span><br><span class="line">+ curl -LfsSo /tmp/openjdk.tar.gz http://10.20.61.27:8887/OpenJDK11U-jdk_x64_linux_openj9_11.0.7_10_openj9-0.20.0.tar.gz</span><br><span class="line">+ mkdir -p /opt/java/openjdk</span><br><span class="line">+ cd /opt/java/openjdk</span><br><span class="line">+ tar -xf /tmp/openjdk.tar.gz '--strip-components=1'</span><br><span class="line">+ apk del --purge .fetch-deps</span><br><span class="line">WARNING: Ignoring APKINDEX.5f57d7a5.tar.gz: No such file or directory</span><br><span class="line">WARNING: Ignoring APKINDEX.e1c8646f.tar.gz: No such file or directory</span><br><span class="line">(1/5) Purging .fetch-deps (20200509.020918)</span><br><span class="line">(2/5) Purging curl (7.67.0-r0)</span><br><span class="line">(3/5) Purging libcurl (7.67.0-r0)</span><br><span class="line">(4/5) Purging ca-certificates (20191127-r1)</span><br><span class="line">Executing ca-certificates-20191127-r1.post-deinstall</span><br><span class="line">(5/5) Purging nghttp2-libs (1.40.0-r0)</span><br><span class="line">Executing busybox-1.31.1-r9.trigger</span><br><span class="line">Executing glibc-bin-2.31-r0.trigger</span><br><span class="line">/usr/glibc-compat/sbin/ldconfig: /usr/glibc-compat/lib/ld-linux-x86-64.so.2 is not a symbolic link</span><br><span class="line"></span><br><span class="line">OK: 17 MiB in 17 packages</span><br><span class="line">+ rm -rf '/var/cache/apk/*'</span><br><span class="line">+ rm -rf /tmp/openjdk.tar.gz</span><br><span class="line">Removing intermediate container 5a861f325886</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> 65d928ee55b8</span></span><br><span class="line">Step 7/9 : ENV JAVA_HOME=/opt/java/openjdk     PATH="/opt/java/openjdk/bin:$PATH"</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> Running <span class="keyword">in</span> 587330f6603b</span></span><br><span class="line">Removing intermediate container 587330f6603b</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> 4c723c83f5d4</span></span><br><span class="line">Step 8/9 : ENV JAVA_TOOL_OPTIONS="-XX:+IgnoreUnrecognizedVMOptions -XX:+UseContainerSupport -XX:+IdleTuningCompactOnIdle -XX:+IdleTuningGcOnIdle"</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> Running <span class="keyword">in</span> 95957f1a2a21</span></span><br><span class="line">Removing intermediate container 95957f1a2a21</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> 335adfbeeca0</span></span><br><span class="line">Step 9/9 : CMD ["jshell"]</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> Running <span class="keyword">in</span> ffa361fa1540</span></span><br><span class="line">Removing intermediate container ffa361fa1540</span><br><span class="line"><span class="meta"> ---&gt;</span><span class="bash"> cdd09d947ca9</span></span><br><span class="line">Successfully built cdd09d947ca9</span><br><span class="line">Successfully tagged openjdk:11.0-openj9</span><br></pre></td></tr></table></figure>
+
+<h1 id="使用Jlink精简JDK"><a href="#使用Jlink精简JDK" class="headerlink" title="使用Jlink精简JDK"></a>使用Jlink精简JDK</h1><p>做了一下小服务，不需要乱七八糟的依赖，就需要<code>java.base和java.logging</code>就行了，所以上手jlink，干掉多余的东西。</p>
+<h2 id="Jlink介绍"><a href="#Jlink介绍" class="headerlink" title="Jlink介绍"></a>Jlink介绍</h2><p>官方文档：<a href="https://docs.oracle.com/en/java/javase/11/tools/jlink.html" target="_blank" rel="noopener">jlink</a></p>
+<p>JEP：<a href="https://openjdk.java.net/jeps/282" target="_blank" rel="noopener">JEP 282: jlink: The Java Linker</a></p>
+<blockquote>
+<p>您可以使用jlink工具将一组模块及其依赖项组装和优化为自定义运行时映像。</p>
+<p>ps. 这也就是OpenJDK9+没有再提供jre的原因，这个比jre强多了好吗，想咋改就咋改。</p>
+</blockquote>
+<p>Jlink使用介绍：<a href="https://medium.com/azulsystems/using-jlink-to-build-java-runtimes-for-non-modular-applications-9568c5e70ef4" target="_blank" rel="noopener">Using jlink to Build Java Runtimes for non-Modular Applications</a></p>
+<p><strong>注：</strong>如果想精简JDK镜像的话，先用<code>jdeps</code>查看下Jar包的依赖。做到心中有数。<a href="https://docs.oracle.com/en/java/javase/11/tools/jdeps.html" target="_blank" rel="noopener">jdeps link</a></p>
+<h3 id="常用参数介绍"><a href="#常用参数介绍" class="headerlink" title="常用参数介绍"></a>常用参数介绍</h3><p><strong>–add-modules mod[,mod…]</strong></p>
+<p>添加模块，后面加模块名的可变参数</p>
+<p><strong>-c={0|1|2} or –compress={0|1|2}</strong></p>
+<p>启用资源压缩</p>
+<ul>
+<li>0：不压缩</li>
+<li>1：常量字符串共享</li>
+<li>2：ZIP</li>
+</ul>
+<p><strong>–no-header-files</strong></p>
+<p>排除头文件</p>
+<p><strong>–no-man-pages</strong></p>
+<p>排除用户手册</p>
+<p><strong>–output</strong> <strong>path</strong></p>
+<p>指定新JDK镜像位置</p>
+<p><strong>–strip-debug</strong></p>
+<p>不输出debug信息</p>
+<h2 id="参数示例"><a href="#参数示例" class="headerlink" title="参数示例"></a>参数示例</h2><p>以我这边一个精简为例：</p>
+<ul>
+<li>去掉头文件；</li>
+<li>去掉用户手册；</li>
+<li>不压缩（直接使用）；</li>
+<li>屏蔽debug信息；</li>
+<li>添加指定模块： <code>java.base,java.logging,jdk.unsupported</code>；</li>
+<li>输出到指定目录：<code>/opt/openjdk/jre</code></li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">jlink --no-header-files --no-man-pages --compress&#x3D;0 --strip-debug \</span><br><span class="line">--add-modules java.base,java.logging,jdk.unsupported \</span><br><span class="line">--output &#x2F;opt&#x2F;openjdk&#x2F;jre;</span><br></pre></td></tr></table></figure>
+
+<p>基本上一个270Mb的HotSpot镜像，按照上面的需求精简完就40多Mb。</p>
+<h1 id="精简OpenJ9"><a href="#精简OpenJ9" class="headerlink" title="精简OpenJ9"></a>精简OpenJ9</h1><p>用的命令和示例中相同，但是因为OpenJ9的JDK本来就大，所以精简完也会比HotSpot的大上10Mb左右。相较于内存节省的空间，在可接受范围内。</p>
+<p>OpenJ9的精简基于前面构建的<code>openjdk:11.0-openj9</code>，通过Dockerfile的分层构建和基础镜像实现。具体思路如下：</p>
+<ol>
+<li>选择<code>openjdk:11.0-openj9</code>作为来源，精简其中的JDK，存放于指定目录。</li>
+<li>重新拉取一个Alpine镜像作为底层，拷贝刚才制作的JDK镜像到新的Alpine中。</li>
+<li>本地化配置</li>
+</ol>
+<p>精简所用的Dockerfile详见附录</p>
+<h2 id="内存占用"><a href="#内存占用" class="headerlink" title="内存占用"></a>内存占用</h2><p>通过OpenJ9镜像创建一个现有服务镜像，长时间稳定运行后，和之前对比。</p>
+<p>测试用的是一个Spring Boot的MVC小项目，通过docker stats 查看内存占用。</p>
+<p>说明：以<code>client-demo</code>镜像为例，长时间运行（24H以上）后对比。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker stats &lt;service&#39;s-docker-name&gt;</span><br></pre></td></tr></table></figure>
+
+<p>Hotspot：</p>
+<p><img src="https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/docker/hotspot-mem-use.png" alt=""></p>
+<p>OpenJ9：</p>
+<p><img src="https://gsealy-1257917518.cos.ap-beijing.myqcloud.com/gsealy.github.io/docker/openj9-mem-use.png" alt=""></p>
+<p>可以明显的看到，Hotspot JVM的内存占用远高于OpenJ9。具体原因未分析，先用着</p>
+<h1 id="附：Docker-JVM本地化"><a href="#附：Docker-JVM本地化" class="headerlink" title="附：Docker JVM本地化"></a>附：Docker JVM本地化</h1><p>JVM的Docker版本都是官方原版的，所以有很多的配置都是通用配置，下面说下几个修改点。</p>
+<h2 id="时区"><a href="#时区" class="headerlink" title="时区"></a>时区</h2><p>时区是有JVM所在的基础镜像所控制的，如果没有在jar运行时手动配置，则会直接调用系统时区。所以为了一劳永逸，直接修改基础镜像的时区，这里以Alpine为例：</p>
+<p>Alpine配置时区需要安装<code>tzdata</code>，首先替换仓库为中科大的镜像，然后安装<code>tzdata</code>，配置完后再删除即可。因为是在一条命令中执行的，所以构建好后只会有一层。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> <span class="built_in">set</span> -eux; \</span></span><br><span class="line"><span class="bash">    sed -i <span class="string">'s/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g'</span> /etc/apk/repositories; \</span></span><br><span class="line"><span class="bash">    apk add --no-cache --virtual .build-deps binutils tzdata; \</span></span><br><span class="line"><span class="bash">    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime; \</span></span><br><span class="line"><span class="bash">    <span class="built_in">echo</span> <span class="string">"Asia/Shanghai"</span> &gt; /etc/timezone; \</span></span><br><span class="line"><span class="bash">    apk del tzdata .build-deps;</span></span><br><span class="line"></span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<h2 id="语言"><a href="#语言" class="headerlink" title="语言"></a>语言</h2><p>系统默认语言基本都是US，需要修改为CN才可以。这个其实在上面 <code>构建JDK</code> 的时候在输出中出现过了。主要就是设置下Dockerfile的 <code>ENV</code> 语法糖。然后配置下自启动配置就好了。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line"><span class="keyword">ENV</span> LANG=<span class="string">"zh_CN.UTF-8"</span> LC_ALL=<span class="string">"zh_CN.UTF-8"</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> <span class="built_in">set</span> -eux; \</span></span><br><span class="line"><span class="bash">    <span class="built_in">echo</span> <span class="string">"export LANG=<span class="variable">$LANG</span>"</span> &gt; /etc/profile.d/locale.sh;</span></span><br><span class="line"></span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<h1 id="附：Dockerfile"><a href="#附：Dockerfile" class="headerlink" title="附：Dockerfile"></a>附：Dockerfile</h1><h2 id="OpenJ9-full"><a href="#OpenJ9-full" class="headerlink" title="OpenJ9-full"></a>OpenJ9-full</h2><ul>
+<li>本地编译适配，修改URL等</li>
+<li>替换语言环境变量为中文</li>
+</ul>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> alpine:<span class="number">3.11</span></span><br><span class="line"><span class="keyword">MAINTAINER</span> Gsealy &lt;gsealy@outlook.com&gt;</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> LANG=<span class="string">"zh_CN.UTF-8"</span> LC_ALL=<span class="string">"zh_CN.UTF-8"</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> sed -i <span class="string">'s/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g'</span> /etc/apk/repositories \</span></span><br><span class="line"><span class="bash">    &amp;&amp; apk add --no-cache --virtual .build-deps curl binutils \</span></span><br><span class="line"><span class="bash">    &amp;&amp; GLIBC_VER=<span class="string">"2.31-r0"</span> \</span></span><br><span class="line"><span class="bash">    &amp;&amp; URL_PREFIX=<span class="string">"http://10.20.61.27:8887"</span> \</span></span><br><span class="line"><span class="bash">    &amp;&amp; GCC_LIBS_URL=<span class="string">"<span class="variable">$&#123;URL_PREFIX&#125;</span>/gcc-libs-9.1.0-2-x86_64.pkg.tar.xz"</span> \</span></span><br><span class="line"><span class="bash">    &amp;&amp; ZLIB_URL=<span class="string">"<span class="variable">$&#123;URL_PREFIX&#125;</span>/zlib-1_1.2.11-3-x86_64.pkg.tar.xz"</span> \</span></span><br><span class="line"><span class="bash">    &amp;&amp; curl -LfsS <span class="variable">$&#123;URL_PREFIX&#125;</span>/sgerrand.rsa.pub -o /etc/apk/keys/sgerrand.rsa.pub \</span></span><br><span class="line"><span class="bash">    &amp;&amp; curl -LfsS <span class="variable">$&#123;URL_PREFIX&#125;</span>/glibc-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk &gt; /tmp/glibc-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk \</span></span><br><span class="line"><span class="bash">    &amp;&amp; apk add --no-cache /tmp/glibc-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk \</span></span><br><span class="line"><span class="bash">    &amp;&amp; curl -LfsS <span class="variable">$&#123;URL_PREFIX&#125;</span>/glibc-bin-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk &gt; /tmp/glibc-bin-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk \</span></span><br><span class="line"><span class="bash">    &amp;&amp; apk add --no-cache /tmp/glibc-bin-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk \</span></span><br><span class="line"><span class="bash">    &amp;&amp; curl -Ls <span class="variable">$&#123;URL_PREFIX&#125;</span>/glibc-i18n-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk &gt; /tmp/glibc-i18n-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk \</span></span><br><span class="line"><span class="bash">    &amp;&amp; apk add --no-cache /tmp/glibc-i18n-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk \</span></span><br><span class="line"><span class="bash">    &amp;&amp; /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 <span class="string">"<span class="variable">$LANG</span>"</span> || <span class="literal">true</span> \</span></span><br><span class="line"><span class="bash">    &amp;&amp; <span class="built_in">echo</span> <span class="string">"export LANG=<span class="variable">$LANG</span>"</span> &gt; /etc/profile.d/locale.sh \</span></span><br><span class="line"><span class="bash">    &amp;&amp; curl -LfsS <span class="variable">$&#123;GCC_LIBS_URL&#125;</span> -o /tmp/gcc-libs.tar.xz \</span></span><br><span class="line"><span class="bash">    &amp;&amp; mkdir /tmp/gcc \</span></span><br><span class="line"><span class="bash">    &amp;&amp; tar -xf /tmp/gcc-libs.tar.xz -C /tmp/gcc \</span></span><br><span class="line"><span class="bash">    &amp;&amp; mv /tmp/gcc/usr/lib/libgcc* /tmp/gcc/usr/lib/libstdc++* /usr/glibc-compat/lib \</span></span><br><span class="line"><span class="bash">    &amp;&amp; strip /usr/glibc-compat/lib/libgcc_s.so.* /usr/glibc-compat/lib/libstdc++.so* \</span></span><br><span class="line"><span class="bash">    &amp;&amp; curl -LfsS <span class="variable">$&#123;ZLIB_URL&#125;</span> -o /tmp/libz.tar.xz \</span></span><br><span class="line"><span class="bash">    &amp;&amp; mkdir /tmp/libz \</span></span><br><span class="line"><span class="bash">    &amp;&amp; tar -xf /tmp/libz.tar.xz -C /tmp/libz \</span></span><br><span class="line"><span class="bash">    &amp;&amp; mv /tmp/libz/usr/lib/libz.so* /usr/glibc-compat/lib \</span></span><br><span class="line"><span class="bash">    &amp;&amp; apk del --purge .build-deps glibc-i18n \</span></span><br><span class="line"><span class="bash">    &amp;&amp; rm -rf /tmp/*.apk /tmp/gcc /tmp/gcc-libs.tar.xz /tmp/libz /tmp/libz.tar.xz /var/cache/apk/*</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> JAVA_VERSION jdk-<span class="number">11.0</span>.<span class="number">7</span>+<span class="number">10</span>_openj9-<span class="number">0.20</span>.<span class="number">0</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> <span class="built_in">set</span> -eux; \</span></span><br><span class="line"><span class="bash">    sed -i <span class="string">'s/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g'</span> /etc/apk/repositories; \</span></span><br><span class="line"><span class="bash">    URL_PREFIX=<span class="string">"http://10.20.61.27:8887"</span>; \</span></span><br><span class="line"><span class="bash">    apk add --no-cache --virtual .fetch-deps curl; \</span></span><br><span class="line"><span class="bash">    curl -LfsSo /tmp/openjdk.tar.gz <span class="variable">$&#123;URL_PREFIX&#125;</span>/OpenJDK11U-jdk_x64_linux_openj9_11.0.7_10_openj9-0.20.0.tar.gz ; \</span></span><br><span class="line"><span class="bash">    mkdir -p /opt/java/openjdk; \</span></span><br><span class="line"><span class="bash">    <span class="built_in">cd</span> /opt/java/openjdk; \</span></span><br><span class="line"><span class="bash">    tar -xf /tmp/openjdk.tar.gz --strip-components=1; \</span></span><br><span class="line"><span class="bash">    apk del --purge .fetch-deps; \</span></span><br><span class="line"><span class="bash">    rm -rf /var/cache/apk/*; \</span></span><br><span class="line"><span class="bash">    rm -rf /tmp/openjdk.tar.gz;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> JAVA_HOME=/opt/java/openjdk \</span><br><span class="line">    PATH=<span class="string">"/opt/java/openjdk/bin:$PATH"</span></span><br><span class="line"><span class="keyword">ENV</span> JAVA_TOOL_OPTIONS=<span class="string">"-XX:+IgnoreUnrecognizedVMOptions -XX:+UseContainerSupport -XX:+IdleTuningCompactOnIdle -XX:+IdleTuningGcOnIdle"</span></span><br><span class="line"><span class="keyword">CMD</span><span class="bash"> [<span class="string">"jshell"</span>]</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="Openj9-slim"><a href="#Openj9-slim" class="headerlink" title="Openj9-slim"></a>Openj9-slim</h2><ul>
+<li>包括full所有修改</li>
+<li>使用<code>jlink</code>精简jdk</li>
+<li>设定时区为<code>Asia/shanghai</code></li>
+</ul>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> openjdk:<span class="number">11.0</span>-openj9 as deps</span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> <span class="built_in">set</span> -eux; \</span></span><br><span class="line"><span class="bash">    jlink --no-header-files --no-man-pages --compress=0 --strip-debug \</span></span><br><span class="line"><span class="bash">    --add-modules java.base,java.logging,jdk.unsupported \</span></span><br><span class="line"><span class="bash">    --output /opt/openjdk/jre;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">FROM</span> alpine:<span class="number">3.11</span></span><br><span class="line"><span class="keyword">MAINTAINER</span> Gsealy &lt;gsealy@outlook.com&gt;</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> LANG=<span class="string">"zh_CN.UTF-8"</span> LC_ALL=<span class="string">"zh_CN.UTF-8"</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">COPY</span><span class="bash"> --from=deps /opt/openjdk/jre /opt/openjdk/jre</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> sed -i <span class="string">'s/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g'</span> /etc/apk/repositories \</span></span><br><span class="line"><span class="bash">    &amp;&amp; apk add --no-cache --virtual .build-deps curl binutils \</span></span><br><span class="line"><span class="bash">    &amp;&amp; GLIBC_VER=<span class="string">"2.31-r0"</span> \</span></span><br><span class="line"><span class="bash">    &amp;&amp; URL_PREFIX=<span class="string">"http://10.20.61.27:8887"</span> \</span></span><br><span class="line"><span class="bash">    &amp;&amp; GCC_LIBS_URL=<span class="string">"<span class="variable">$&#123;URL_PREFIX&#125;</span>/gcc-libs-9.1.0-2-x86_64.pkg.tar.xz"</span> \</span></span><br><span class="line"><span class="bash">    &amp;&amp; ZLIB_URL=<span class="string">"<span class="variable">$&#123;URL_PREFIX&#125;</span>/zlib-1_1.2.11-3-x86_64.pkg.tar.xz"</span> \</span></span><br><span class="line"><span class="bash">    &amp;&amp; curl -LfsS <span class="variable">$&#123;URL_PREFIX&#125;</span>/sgerrand.rsa.pub -o /etc/apk/keys/sgerrand.rsa.pub \</span></span><br><span class="line"><span class="bash">    &amp;&amp; curl -LfsS <span class="variable">$&#123;URL_PREFIX&#125;</span>/glibc-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk &gt; /tmp/glibc-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk \</span></span><br><span class="line"><span class="bash">    &amp;&amp; apk add --no-cache /tmp/glibc-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk \</span></span><br><span class="line"><span class="bash">    &amp;&amp; curl -LfsS <span class="variable">$&#123;URL_PREFIX&#125;</span>/glibc-bin-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk &gt; /tmp/glibc-bin-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk \</span></span><br><span class="line"><span class="bash">    &amp;&amp; apk add --no-cache /tmp/glibc-bin-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk \</span></span><br><span class="line"><span class="bash">    &amp;&amp; curl -Ls <span class="variable">$&#123;URL_PREFIX&#125;</span>/glibc-i18n-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk &gt; /tmp/glibc-i18n-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk \</span></span><br><span class="line"><span class="bash">    &amp;&amp; apk add --no-cache /tmp/glibc-i18n-<span class="variable">$&#123;GLIBC_VER&#125;</span>.apk \</span></span><br><span class="line"><span class="bash">    &amp;&amp; /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 <span class="string">"<span class="variable">$LANG</span>"</span> || <span class="literal">true</span> \</span></span><br><span class="line"><span class="bash">    &amp;&amp; <span class="built_in">echo</span> <span class="string">"export LANG=<span class="variable">$LANG</span>"</span> &gt; /etc/profile.d/locale.sh \</span></span><br><span class="line"><span class="bash">    &amp;&amp; curl -LfsS <span class="variable">$&#123;GCC_LIBS_URL&#125;</span> -o /tmp/gcc-libs.tar.xz \</span></span><br><span class="line"><span class="bash">    &amp;&amp; mkdir /tmp/gcc \</span></span><br><span class="line"><span class="bash">    &amp;&amp; tar -xf /tmp/gcc-libs.tar.xz -C /tmp/gcc \</span></span><br><span class="line"><span class="bash">    &amp;&amp; mv /tmp/gcc/usr/lib/libgcc* /tmp/gcc/usr/lib/libstdc++* /usr/glibc-compat/lib \</span></span><br><span class="line"><span class="bash">    &amp;&amp; strip /usr/glibc-compat/lib/libgcc_s.so.* /usr/glibc-compat/lib/libstdc++.so* \</span></span><br><span class="line"><span class="bash">    &amp;&amp; curl -LfsS <span class="variable">$&#123;ZLIB_URL&#125;</span> -o /tmp/libz.tar.xz \</span></span><br><span class="line"><span class="bash">    &amp;&amp; mkdir /tmp/libz \</span></span><br><span class="line"><span class="bash">    &amp;&amp; tar -xf /tmp/libz.tar.xz -C /tmp/libz \</span></span><br><span class="line"><span class="bash">    &amp;&amp; mv /tmp/libz/usr/lib/libz.so* /usr/glibc-compat/lib \</span></span><br><span class="line"><span class="bash">    &amp;&amp; apk del --purge .build-deps glibc-i18n \</span></span><br><span class="line"><span class="bash">    &amp;&amp; rm -rf /tmp/*.apk /tmp/gcc /tmp/gcc-libs.tar.xz /tmp/libz /tmp/libz.tar.xz /var/cache/apk/*</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> <span class="built_in">set</span> -eux; \</span></span><br><span class="line"><span class="bash">    sed -i <span class="string">'s/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g'</span> /etc/apk/repositories; \</span></span><br><span class="line"><span class="bash">    apk add --no-cache --virtual .build-deps binutils tzdata; \</span></span><br><span class="line"><span class="bash">    <span class="built_in">echo</span> <span class="string">"export LANG=<span class="variable">$LANG</span>"</span> &gt; /etc/profile.d/locale.sh; \</span></span><br><span class="line"><span class="bash">    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime; \</span></span><br><span class="line"><span class="bash">    <span class="built_in">echo</span> <span class="string">"Asia/Shanghai"</span> &gt; /etc/timezone; \</span></span><br><span class="line"><span class="bash">    apk del tzdata .build-deps;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> JAVA_HOME=/opt/openjdk/jre \</span><br><span class="line">    PATH=/opt/openjdk/jre/bin:$PATH</span><br><span class="line"><span class="keyword">ENV</span> JAVA_TOOL_OPTIONS=<span class="string">"-XX:+IgnoreUnrecognizedVMOptions -XX:+UseContainerSupport -XX:+IdleTuningCompactOnIdle -XX:+IdleTuningGcOnIdle"</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="Hotspot-slim"><a href="#Hotspot-slim" class="headerlink" title="Hotspot-slim"></a>Hotspot-slim</h2><p>Alpine官方已经提供apk，直接精简就可以了</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> alpine:<span class="number">3.11</span> as deps</span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> <span class="built_in">set</span> -eux; \</span></span><br><span class="line"><span class="bash">    sed -i <span class="string">'s/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g'</span> /etc/apk/repositories; \</span></span><br><span class="line"><span class="bash">    apk --no-cache add openjdk11-jdk openjdk11-jmods; \</span></span><br><span class="line"><span class="bash">    /usr/lib/jvm/java-11-openjdk/bin/jlink --no-header-files --no-man-pages --compress=0 --strip-debug \</span></span><br><span class="line"><span class="bash">    --add-modules java.base,java.logging,jdk.unsupported \</span></span><br><span class="line"><span class="bash">    --output /opt/openjdk/jre;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">FROM</span> alpine:<span class="number">3.11</span></span><br><span class="line"><span class="keyword">MAINTAINER</span> Gsealy &lt;gsealy@outlook.com&gt;</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> LANG=<span class="string">"zh_CN.UTF-8"</span> LC_ALL=<span class="string">"zh_CN.UTF-8"</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">COPY</span><span class="bash"> --from=deps /opt/openjdk/jre /opt/openjdk/jre</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> <span class="built_in">set</span> -eux; \</span></span><br><span class="line"><span class="bash">    sed -i <span class="string">'s/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g'</span> /etc/apk/repositories; \</span></span><br><span class="line"><span class="bash">    apk add --no-cache --virtual .build-deps binutils tzdata; \</span></span><br><span class="line"><span class="bash">    <span class="built_in">echo</span> <span class="string">"export LANG=<span class="variable">$LANG</span>"</span> &gt; /etc/profile.d/locale.sh; \</span></span><br><span class="line"><span class="bash">    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime; \</span></span><br><span class="line"><span class="bash">    <span class="built_in">echo</span> <span class="string">"Asia/Shanghai"</span> &gt; /etc/timezone; \</span></span><br><span class="line"><span class="bash">    apk del tzdata .build-deps;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">ENV</span> JAVA_HOME=/opt/openjdk/jre \</span><br><span class="line">    PATH=<span class="string">"/opt/openjdk/jre/lib:/opt/openjdk/jre/bin:$PATH"</span></span><br></pre></td></tr></table></figure>
+
+<p>总结：要是为了镜像大小的话，可以用OpenJDK官方的，因为支持musl-libc，所以会比OpenJ9的小几十MB。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      <div>
+        <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+  <div>Buy Me A Coffee.</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>打赏</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/images/wechatpay.png" alt="Gsealy 微信支付"/>
+        <p>微信支付</p>
+      </div>
+    
+
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+      <div>
+        <ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>Gsealy</li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://gsealy.net/posts/147e3088/" title="本地构建基于Alpine的OpenJ9 OpenJDK11及精简JDK的制作">https://gsealy.net/posts/147e3088/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明出处！</li>
+</ul>
+
+      </div>
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Docker/" rel="tag"># Docker</a>
+          
+            <a href="/tags/Java/" rel="tag"># Java</a>
+          
+            <a href="/tags/OpenJ9/" rel="tag"># OpenJ9</a>
+          
+        </div>
+      
+
+      
+      
+        <div class="post-widgets">
+        
+
+        
+
+        
+          
+          <div class="social_share">
+            
+               <div>
+                 
+  <div class="bdsharebuttonbox">
+    <a href="#" class="bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a>
+    <a href="#" class="bds_douban" data-cmd="douban" title="分享到豆瓣网"></a>
+    <a href="#" class="bds_sqq" data-cmd="sqq" title="分享到QQ好友"></a>
+    <a href="#" class="bds_qzone" data-cmd="qzone" title="分享到QQ空间"></a>
+    <a href="#" class="bds_weixin" data-cmd="weixin" title="分享到微信"></a>
+    <a href="#" class="bds_tieba" data-cmd="tieba" title="分享到百度贴吧"></a>
+    <a href="#" class="bds_twi" data-cmd="twi" title="分享到Twitter"></a>
+    <a href="#" class="bds_fbook" data-cmd="fbook" title="分享到Facebook"></a>
+    <a href="#" class="bds_more" data-cmd="more"></a>
+    <a class="bds_count" data-cmd="count"></a>
+  </div>
+  <script>
+    window._bd_share_config = {
+      "common": {
+        "bdText": "",
+        "bdMini": "2",
+        "bdMiniList": false,
+        "bdPic": ""
+      },
+      "share": {
+        "bdSize": "16",
+        "bdStyle": "0"
+      },
+      "image": {
+        "viewList": ["tsina", "douban", "sqq", "qzone", "weixin", "twi", "fbook"],
+        "viewText": "分享到：",
+        "viewSize": "16"
+      }
+    }
+  </script>
+
+<script>
+  with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];
+</script>
+
+               </div>
+            
+            
+          </div>
+        
+        </div>
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/posts/1ef3876c/" rel="next" title="Win10 基于 Hyper-V 安装 Minikube">
+                <i class="fa fa-chevron-left"></i> Win10 基于 Hyper-V 安装 Minikube
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/posts/6e5db5aa/" rel="prev" title="访问Docker容器响应'ERR_CONNECTION_RESET'的问题排查">
+                访问Docker容器响应'ERR_CONNECTION_RESET'的问题排查 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="/images/avatar.jpg"
+                alt="Gsealy" />
+            
+              <p class="site-author-name" itemprop="name">Gsealy</p>
+              <p class="site-description motion-element" itemprop="description">Stay hungry. Stay foolish.</p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/%20%7C%7C%20archive">
+                
+                    <span class="site-state-item-count">40</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">57</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  <a href="https://github.com/Gsealy" target="_blank" title="GitHub"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                  
+                </span>
+              
+                <span class="links-of-author-item">
+                  <a href="mailto:gsealy@outlook.com" target="_blank" title="E-Mail"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                  
+                </span>
+              
+            </div>
+          
+
+          
+          
+            <div class="cc-license motion-element" itemprop="license">
+              <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" target="_blank">
+                <img src="/images/cc-by-nc-sa.svg" alt="Creative Commons" />
+              </a>
+            </div>
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前期准备"><span class="nav-number">1.</span> <span class="nav-text">前期准备</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#修改脚本"><span class="nav-number">1.1.</span> <span class="nav-text">修改脚本</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#构建JDK"><span class="nav-number">2.</span> <span class="nav-text">构建JDK</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#使用Jlink精简JDK"><span class="nav-number">3.</span> <span class="nav-text">使用Jlink精简JDK</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Jlink介绍"><span class="nav-number">3.1.</span> <span class="nav-text">Jlink介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#常用参数介绍"><span class="nav-number">3.1.1.</span> <span class="nav-text">常用参数介绍</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参数示例"><span class="nav-number">3.2.</span> <span class="nav-text">参数示例</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#精简OpenJ9"><span class="nav-number">4.</span> <span class="nav-text">精简OpenJ9</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#内存占用"><span class="nav-number">4.1.</span> <span class="nav-text">内存占用</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#附：Docker-JVM本地化"><span class="nav-number">5.</span> <span class="nav-text">附：Docker JVM本地化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#时区"><span class="nav-number">5.1.</span> <span class="nav-text">时区</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#语言"><span class="nav-number">5.2.</span> <span class="nav-text">语言</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#附：Dockerfile"><span class="nav-number">6.</span> <span class="nav-text">附：Dockerfile</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#OpenJ9-full"><span class="nav-number">6.1.</span> <span class="nav-text">OpenJ9-full</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Openj9-slim"><span class="nav-number">6.2.</span> <span class="nav-text">Openj9-slim</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Hotspot-slim"><span class="nav-number">6.3.</span> <span class="nav-text">Hotspot-slim</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+        <div class="back-to-top">
+          <i class="fa fa-arrow-up"></i>
+          
+            <span id="scrollpercent"><span>0</span>%</span>
+          
+        </div>
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2022</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Gsealy</span>
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    
+    <span title="站点总字数">169k</span>
+  
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    
+    <span title="站点阅读时长">2:34</span>
+  
+</div>
+
+
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动 v4.2.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a class="theme-link" target="_blank" href="https://theme-next.org">NexT.Gemini</a> v6.4.1</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.4.1"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.4.1"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.4.1"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.4.1"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.4.1"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.4.1"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.4.1"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  
+  
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(function (item) {
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: '5aBLvdhqaRMbqifdf8wbpRVh-gzGzoHsz',
+        appKey: 's0c3WPbvWcpddeKLTJdFFgC7',
+        placeholder: 'say something...',
+        avatar:'mm',
+        meta:guest,
+        pageSize:'10' || 10,
+        visitor: false
+    });
+  </script>
+
+
+
+  
+
+  <script type="text/javascript">
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url);
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+  <script>
+    
+    function addCount(Counter) {
+      var $visitors = $(".leancloud_visitors");
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+
+      Counter('get', '/classes/Counter', { where: JSON.stringify({ url }) })
+        .done(function ({ results }) {
+          if (results.length > 0) {
+            var counter = results[0];
+            
+              var $element = $(document.getElementById(url));
+              $element.find('.leancloud-visitors-count').text(counter.time + 1);
+            
+            Counter('put', `/classes/Counter/${counter.objectId}`, JSON.stringify({ time: { "__op":"Increment", "amount":1 } }))
+            
+            .fail(function ({ responseJSON }) {
+                console.log('Failed to save Visitor num, with error message: ' + responseJSON.error);
+            })
+          } else {
+            
+              Counter('post', '/classes/Counter', JSON.stringify({ title: title, url: url, time: 1}))
+                .done(function () {
+                  var $element = $(document.getElementById(url));
+                  $element.find('.leancloud-visitors-count').text(1);
+                })
+                .fail(function () {
+                  console.log('Failed to create');
+                });
+            
+          }
+        })
+      .fail(function ({ responseJSON }) {
+        console.log('LeanCloud Counter Error:' + responseJSON.code + " " + responseJSON.error);
+      });
+    }
+    
+
+    $(function() {
+      $.get('https://app-router.leancloud.cn/2/route?appId=' + "5aBLvdhqaRMbqifdf8wbpRVh-gzGzoHsz")
+        .done(function ({ api_server }) {
+          var Counter = function (method, url, data) {
+            return $.ajax({
+              method: method,
+              url: `https://${api_server}/1.1${url}`,
+              headers: {
+                'X-LC-Id': "5aBLvdhqaRMbqifdf8wbpRVh-gzGzoHsz",
+                'X-LC-Key': "s0c3WPbvWcpddeKLTJdFFgC7",
+                'Content-Type': 'application/json',
+              },
+              data: data,
+            });
+          };
+          
+          addCount(Counter);
+          
+        })
+    });
+  </script>
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+  <script type="text/javascript" src="/js/src/js.cookie.js?v=6.4.1"></script>
+  <script type="text/javascript" src="/js/src/scroll-cookie.js?v=6.4.1"></script>
+
+
+  
+
+  
+
+  
+
+</body>
+</html>
